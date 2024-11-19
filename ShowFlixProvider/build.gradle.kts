@@ -7,7 +7,7 @@ cloudstream {
 
     description = "HD Provider for all Indian Languages"
     language = "hi"
-    authors = listOf("LikDev-256")
+    authors = listOf("Phisher98")
 
     /**
      * Status int as the following:
