@@ -1,10 +1,12 @@
 // use an integer for version numbers
-version = 3
+version = 1
+
+
 cloudstream {
     // All of these properties are optional, you can safely remove them
 
-    description = "Insian TV Serials/Shows"
-    language = "hi"
+    description = "YTS Movies 4K Support (Torrent)"
+    language    = "en"
     authors = listOf("Phisher98")
 
     /**
@@ -19,6 +21,6 @@ cloudstream {
     // List of video source types. Users are able to filter for extensions in a given category.
     // You can find a list of avaliable types here:
     // https://recloudstream.github.io/cloudstream/html/app/com.lagradost.cloudstream3/-tv-type/index.html
-    tvTypes = listOf("TvSeries")
-    iconUrl = "https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://oldserials.cc&size=%size%"
-}
+    tvTypes = listOf("Movie,Torrent")
+
+    iconUrl = "https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/yts.png"}

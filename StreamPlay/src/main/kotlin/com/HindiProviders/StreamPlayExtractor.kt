@@ -1379,7 +1379,7 @@ object StreamPlayExtractor : StreamPlay() {
     ) {
         fun Elements.getLinks(): List<Triple<String, String, Int>> {
             return this.flatMap { ele ->
-                ele.select("div.links a:matches(KrakenFiles|GoFile)").map {
+                ele.select("div.links a:matches(KrakenFiles|GoFile|Magnet|Torrent)").map {
                     Triple(
                         it.attr("href"),
                         ele.select("div.size").text(),
@@ -1394,33 +1394,46 @@ object StreamPlayExtractor : StreamPlay() {
             app.get("$jikanAPI/anime/$malId/full").parsedSafe<JikanResponse>()?.data
         val aniId =
             jikan?.external?.find { it.name == "AniDB" }?.url?.substringAfterLast("=")
-        val res =
-            app.get("$animetoshoAPI/series/${jikan?.title?.createSlug()}.$aniId?filter[0][t]=nyaa_class&filter[0][v]=trusted").document
-
-        val servers = if (season == null) {
-            res.select("div.home_list_entry:has(div.links)").getLinks()
-        } else {
-            res.select("div.home_list_entry:has(div.link a:matches([\\.\\s]$episodeSlug[\\.\\s]|S${seasonSLug}E$episodeSlug))")
-                .getLinks()
-        }
-
-        servers.filter {
-            it.third in arrayOf(
-                Qualities.P1080.value,
-                Qualities.P720.value
-            )
-        }
-            .apmap {
-                loadCustomTagExtractor(
-                    it.second,
-                    it.first,
-                    "$animetoshoAPI/",
-                    subtitleCallback,
-                    callback,
-                    it.third
+        for (i in 1..3) {
+            val res =
+                app.get("$animetoshoAPI/series/${jikan?.title?.createSlug()}.$aniId?filter[0][t]=nyaa_class&filter[0][v]=trusted&page=$i").document
+            val servers = if (season == null) {
+                res.select("div.home_list_entry:has(div.links)").getLinks()
+            } else {
+                res.select("div.home_list_entry:has(div.link a:matches([\\.\\s]$episodeSlug[\\.\\s]|S${seasonSLug}E$episodeSlug))")
+                    .getLinks()
+            }
+            servers.filter {
+                it.third in arrayOf(
+                    Qualities.P1080.value,
+                    Qualities.P720.value
                 )
             }
-
+                .apmap {
+                    if(it.first.startsWith("magnet")||it.first.startsWith("Torrent"))
+                    {
+                        callback.invoke(
+                            ExtractorLink(
+                                "Animetosho Torrent",
+                                "Animetosho Torrent",
+                                it.first,
+                                "",
+                                it.third,
+                                INFER_TYPE
+                            )
+                        )
+                    }
+                    else
+                    loadCustomTagExtractor(
+                        it.second,
+                        it.first,
+                        "$animetoshoAPI/",
+                        subtitleCallback,
+                        callback,
+                        it.third
+                    )
+                }
+        }
     }
 
     private suspend fun invokeHianime(
@@ -3743,7 +3756,7 @@ object StreamPlayExtractor : StreamPlay() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit,
     ) {
-        val fixtitle = title?.substringBefore("-")?.substringBefore(":")?.replace("&", " ")
+        //val fixtitle = title?.substringBefore("-")?.substringBefore(":")?.replace("&", " ")
         val searchtitle = title?.substringBefore("-").createSlug()
         //Log.d("Phisher bolly", "$BollyflixVIP/search/$imdbId")
         var res1 =
@@ -3816,6 +3829,30 @@ suspend fun invokeFlixAPI(
             )
         )
     }
+    }
+
+suspend fun invokenyaa(
+        title: String? = null,
+        season: Int? = null,
+        episode: Int? = null,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        val url="$NyaaAPI?f=0&c=0_0&q=$title+S0${season}E0$episode&s=seeders&o=desc"
+        app.get(url).document.select("tr.danger,tr.default").take(10).amap {
+            val Qualities=getIndexQuality(it.selectFirst("tr td:nth-of-type(2)")?.text())
+            val href= getfullURL(it.select("td.text-center a:nth-child(1)").attr("href"), NyaaAPI)
+            callback.invoke(
+                ExtractorLink(
+                    "Nyaa $Qualities",
+                    "Nyaa $Qualities",
+                    href,
+                    "",
+                    Qualities,
+                    ExtractorLinkType.TORRENT
+                )
+            )
+        }
     }
 
 }
