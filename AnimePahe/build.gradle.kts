@@ -1,13 +1,13 @@
 // use an integer for version numbers
-version = 9
+version = 1
 
 
 cloudstream {
-    language = "hi"
+    language = "en"
     // All of these properties are optional, you can safely remove them
 
-//    description = "Lorem Ipsum"
-    authors = listOf("Horis,Phisher98")
+    description = "Animes (SUB/DUB)"
+    authors = listOf("Cloudburst,Lorem Ipsum,Phisher98")
 
     /**
      * Status int as the following:
@@ -18,8 +18,9 @@ cloudstream {
      * */
     status = 1 // will be 3 if unspecified
     tvTypes = listOf(
-        "Movie",
+        "AnimeMovie",
+        "Anime",
+        "OVA",
     )
-
-    iconUrl = "https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://desicinemas.tv&size=%size%"
+    iconUrl = "https://www.google.com/s2/favicons?domain=animepahe.ru/&sz=%size%"
 }
