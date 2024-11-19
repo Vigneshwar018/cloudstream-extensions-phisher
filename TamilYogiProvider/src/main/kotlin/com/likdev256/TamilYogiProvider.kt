@@ -1,4 +1,4 @@
-package com.likdev256
+package com.Phisher98
 import android.util.Log
 //import android.util.Log
 import com.lagradost.cloudstream3.*
@@ -22,8 +22,10 @@ class TamilYogiProvider : MainAPI() { // all providers must be an instance of Ma
 
     //private const val TAG = "TamilYogi"
 
+//    private var newMoiesPage = ""
+
     override val mainPage = mainPageOf(
-        "$mainUrl/tamil-movies-online-tamilmv-new/" to "New Movies",
+        "$mainUrl/tamil-movies-online-one-new/" to "New Movies",
         "$mainUrl/tamil-hd-movies-tamilmv-ott/" to "HD Movies",
         "$mainUrl/tamil-dubbed-movies-online-one-new/" to "Dubbed Movies",
         "$mainUrl/tamilyogi-tamil-web-series-tamilgun-new/" to "TV Series"
@@ -47,7 +49,6 @@ class TamilYogiProvider : MainAPI() { // all providers must be an instance of Ma
             it.toSearchResult()
         }
 
-//        println("Vickyjddddddddddddddddddddd")
         return HomePageResponse(arrayListOf(HomePageList(request.name, home, isHorizontalImages = true)), hasNext = true)
         //return newHomePageResponse(request.name, home)
     }
@@ -81,11 +82,11 @@ class TamilYogiProvider : MainAPI() { // all providers must be an instance of Ma
             }
         }
 
-      /*  return if (isTV == true) {
-        newMovieSearchResponse(title, href, TvType.Movie) {
-            this.posterUrl = posterUrl
-            this.quality = quality
-        } */
+        /*  return if (isTV == true) {
+          newMovieSearchResponse(title, href, TvType.Movie) {
+              this.posterUrl = posterUrl
+              this.quality = quality
+          } */
     }
     private fun Element.toSearchResultOnly(): SearchResponse? {
         val titleS = this.selectFirst("h2 a")?.text()?.toString()?.trim() ?: return null
@@ -159,48 +160,48 @@ class TamilYogiProvider : MainAPI() { // all providers must be an instance of Ma
             it.toSearchResult()
         }
 
-       /* return if (tvType == TvType.TvSeries) {
-            val episodes = if (doc.selectFirst("div.les-title strong")?.text().toString()
-                    .contains(Regex("(?i)EP\\s?[0-9]+|Episode\\s?[0-9]+"))
-            ) {
-                doc.select("ul.idTabs li").map {
-                    val id = it.select("a").attr("href")
-                    Episode(
-                        data = fixUrl(doc.select("div$id iframe").attr("src")),
-                        name = it.select("strong").text().replace("Server Ep", "Episode")
-                    )
-                }
-            } else {
-                doc.select("div.les-content a").map {
-                    Episode(
-                        data = it.attr("href"),
-                        name = it.text().replace("Server Ep", "Episode").trim(),
-                    )
-                }
-            }
+        /* return if (tvType == TvType.TvSeries) {
+             val episodes = if (doc.selectFirst("div.les-title strong")?.text().toString()
+                     .contains(Regex("(?i)EP\\s?[0-9]+|Episode\\s?[0-9]+"))
+             ) {
+                 doc.select("ul.idTabs li").map {
+                     val id = it.select("a").attr("href")
+                     Episode(
+                         data = fixUrl(doc.select("div$id iframe").attr("src")),
+                         name = it.select("strong").text().replace("Server Ep", "Episode")
+                     )
+                 }
+             } else {
+                 doc.select("div.les-content a").map {
+                     Episode(
+                         data = it.attr("href"),
+                         name = it.text().replace("Server Ep", "Episode").trim(),
+                     )
+                 }
+             }
 
-            newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
-                this.posterUrl = poster
-                this.year = year
-                //this.plot = description
-                //this.tags = tags
-                //this.rating = rating
-                //addActors(actors)
-                this.recommendations = recommendations
-                //addTrailer(trailer)
-            }
-        } else { */
+             newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
+                 this.posterUrl = poster
+                 this.year = year
+                 //this.plot = description
+                 //this.tags = tags
+                 //this.rating = rating
+                 //addActors(actors)
+                 this.recommendations = recommendations
+                 //addTrailer(trailer)
+             }
+         } else { */
         return newMovieLoadResponse(title, url, TvType.Movie, url) {
-                this.posterUrl = poster
-                this.year = year
-                //this.plot = description
-                //this.tags = tags
-                //this.rating = rating
-                //addActors(actors)
-                this.recommendations = recommendations
-                //addTrailer(trailer)
-            }
-       // }
+            this.posterUrl = poster
+            this.year = year
+            //this.plot = description
+            //this.tags = tags
+            //this.rating = rating
+            //addActors(actors)
+            this.recommendations = recommendations
+            //addTrailer(trailer)
+        }
+        // }
     }
 
     override suspend fun loadLinks(
@@ -209,45 +210,50 @@ class TamilYogiProvider : MainAPI() { // all providers must be an instance of Ma
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val linkRegex = Regex("(https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&=,\\/\\/=]*m3u8))")
+//        val linkRegex = Regex("(https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&=,\\/\\/=]*m3u8))")
+        val linkRegex = Regex("(https?:\\/\\/[^\\s<>\"]+?\\/[^\\s<>\"]+?(?:\\.m3u8|\\.mp4))")
         val source = app.get(data).document.select("iframe").attr("src")
         val script = app.get(source, referer = "$mainUrl/").document.selectFirst("body > script").toString()
         //val links = linkRegex.find(script)?.groups?.get(1)?.value.toString()
         val links = linkRegex.findAll(script).map{it.value.trim()}.toList()
-Log.d("Iframe", links.toString())
-//        Log.d("linksNew", links.toString())
-            safeApiCall {
-                callback.invoke(
-                    ExtractorLink(
-                        "TamilYogi",
-                        "HD",
-                        links[0],
-                        "$mainUrl/",
-                        Qualities.Unknown.value,
-                        true,
-                    )
+
+        Log.d("Iframe", links.toString())
+
+
+
+        safeApiCall {
+            callback.invoke(
+                ExtractorLink(
+                    "TamilYogi",
+                    "HD",
+                    links[0],
+                    "$mainUrl/",
+                    Qualities.Unknown.value,
+                    links[0].contains(".m3u8")
                 )
-                callback.invoke(
-                    ExtractorLink(
-                        "TamilYogi",
-                        "SD",
-                        links[1],
-                        "$mainUrl/",
-                        Qualities.P480.value,
-                        false
-                    )
+            )
+            callback.invoke(
+                ExtractorLink(
+                    "TamilYogi",
+                    "SD",
+                    links[1],
+                    "$mainUrl/",
+                    Qualities.P480.value,
+                    links[1].contains(".m3u8")
                 )
-                callback.invoke(
-                    ExtractorLink(
-                        "TamilYogi",
-                        "Low",
-                        links[2],
-                        "$mainUrl/",
-                        Qualities.P360.value,
-                        false
-                    )
+            )
+            callback.invoke(
+                ExtractorLink(
+                    "TamilYogi",
+                    "Low",
+                    links[2],
+                    "$mainUrl/",
+                    Qualities.P360.value,
+                    links[2].contains(".m3u8")
                 )
-            }
+            )
+        }
+
         return true
     }
 }

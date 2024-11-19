@@ -257,8 +257,8 @@ class ShowFlixProvider : MainAPI() { // all providers must be an instance of Mai
         }
         val merge = Movies + TVSeries
         // merge.map {
-            // Log.d("myname", it.name.replace("(\\()+(.*)+(\\))".toRegex(), "").lowercase())
-            // Log.d("myquery", query)
+        // Log.d("myname", it.name.replace("(\\()+(.*)+(\\))".toRegex(), "").lowercase())
+        // Log.d("myquery", query)
         // }
         return merge.sortedBy { -FuzzySearch.partialRatio(it.name.replace("(\\()+(.*)+(\\))".toRegex(), "").lowercase(), query.lowercase()) }
     }
@@ -418,7 +418,7 @@ class ShowFlixProvider : MainAPI() { // all providers must be an instance of Mai
             val m = parseJson<MovieLinks>(data)
             Log.d("Test555",m.toString())
             val filelions = "https://filelions.to/v/" + m.filelions
-            val streamwish = "https://streamwish.to/e/" + m.streamwish
+            val streamwish = "https://embedwish.com/e/" + m.streamwish + ".html"
             val streamruby = "https://streamruby.com/" + m.streamruby
             sources.add(filelions)
             sources.add(streamwish)
@@ -426,7 +426,7 @@ class ShowFlixProvider : MainAPI() { // all providers must be an instance of Mai
             //sources.add(streamsb)
             Log.d("Phisher",sources.toString())
             sources.forEach { url->
-             loadExtractor(url,subtitleCallback,callback)
+                loadExtractor(url,subtitleCallback,callback)
             }
         }
         return true
