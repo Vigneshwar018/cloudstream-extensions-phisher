@@ -1,12 +1,12 @@
 // use an integer for version numbers
-version = 5
+version = 1
 
 
 cloudstream {
     // All of these properties are optional, you can safely remove them
 
-    description = "BanglaPlex"
-    language    = "hi"
+    description = "Movies/Series/Animes 4K Support (Torrent)"
+    language    = "en"
     authors = listOf("Phisher98")
 
     /**
@@ -21,7 +21,6 @@ cloudstream {
     // List of video source types. Users are able to filter for extensions in a given category.
     // You can find a list of avaliable types here:
     // https://recloudstream.github.io/cloudstream/html/app/com.lagradost.cloudstream3/-tv-type/index.html
-    tvTypes = listOf("Movie")
+    tvTypes = listOf("Movie,Torrent")
 
-    iconUrl="https://banglaplex.shop/uploads/system_logo/logo_619305d7d016f.png"
-}
+    iconUrl = "https://i.ibb.co/w4BnkC9/GwxAcDV.png"}
