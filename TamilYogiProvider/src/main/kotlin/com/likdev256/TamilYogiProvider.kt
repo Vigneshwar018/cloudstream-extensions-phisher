@@ -26,7 +26,7 @@ class TamilYogiProvider : MainAPI() { // all providers must be an instance of Ma
 
     override val mainPage = mainPageOf(
         "$mainUrl/tamil-movies-online-one-new/" to "New Movies",
-        "$mainUrl/tamil-hd-movies-tamilmv-ott/" to "HD Movies",
+        "$mainUrl/tamil-hd-movies/" to "HD Movies",
         "$mainUrl/tamil-dubbed-movies-online-one-new/" to "Dubbed Movies",
         "$mainUrl/tamilyogi-tamil-web-series-tamilgun-new/" to "TV Series"
     )
@@ -60,7 +60,16 @@ class TamilYogiProvider : MainAPI() { // all providers must be an instance of Ma
 //        Log.d("title", titleS)
         val href = fixUrl(this.selectFirst("a")?.attr("href").toString())
         //Log.d("href", href)
-        val posterUrl = fixUrlNull(this.selectFirst("img")?.attr("src"))
+        val posterUrl = this.selectFirst("a img")?.let { img ->
+            // First try data-src
+            img.attr("data-src").takeIf {
+                it.matches(".+\\.(jpg|jpeg|png|gif|webp)$".toRegex())
+            } ?:
+            // If data-src doesn't match, try src
+            img.attr("src").takeIf {
+                it.matches(".+\\.(jpg|jpeg|png|gif|webp)$".toRegex())
+            }
+        }?.let { url -> fixUrlNull(url) }
         Log.d("posterUrl", posterUrl.toString())
         val qualityRegex = Regex("(?i)((DVDRip)|(HD)|(HQ)|(HDRip))")
         val qualityN = qualityRegex.find(titleS)?.value.toString()
