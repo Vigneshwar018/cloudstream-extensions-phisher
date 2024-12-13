@@ -46,8 +46,6 @@ import com.Phisher98.StreamPlayExtractor.invokeTopMovies
 import com.Phisher98.StreamPlayExtractor.invokeTvMovies
 import com.Phisher98.StreamPlayExtractor.invokeUhdmovies
 import com.Phisher98.StreamPlayExtractor.invokeVegamovies
-import com.Phisher98.StreamPlayExtractor.invokeVidSrc
-import com.Phisher98.StreamPlayExtractor.invokeVidsrcto
 import com.Phisher98.StreamPlayExtractor.invokeWatchCartoon
 import com.Phisher98.StreamPlayExtractor.invokeWatchsomuch
 import com.Phisher98.StreamPlayExtractor.invokeZoechip
@@ -55,14 +53,20 @@ import com.Phisher98.StreamPlayExtractor.invokeZshow
 import com.Phisher98.StreamPlayExtractor.invokePlaydesi
 import com.Phisher98.StreamPlayExtractor.invokeBollyflix
 import com.Phisher98.StreamPlayExtractor.invokeBollyflixvip
+import com.Phisher98.StreamPlayExtractor.invokeBroflixVidlink
 import com.Phisher98.StreamPlayExtractor.invokeDramaCool
+import com.Phisher98.StreamPlayExtractor.invokeEmbedsu
 import com.Phisher98.StreamPlayExtractor.invokeExtramovies
+import com.Phisher98.StreamPlayExtractor.invokeFlicky
 import com.Phisher98.StreamPlayExtractor.invokeFlixAPI
 import com.Phisher98.StreamPlayExtractor.invokeVidbinge
 import com.Phisher98.StreamPlayExtractor.invokemovies4u
-import com.Phisher98.StreamPlayExtractor.invokenyaa
 import com.Phisher98.StreamPlayExtractor.invokeSharmaflix
 import com.Phisher98.StreamPlayExtractor.invokeSubtitleAPI
+import com.Phisher98.StreamPlayExtractor.invokeTheyallsayflix
+import com.Phisher98.StreamPlayExtractor.invokeTom
+import com.Phisher98.StreamPlayExtractor.invokeVidsrccc
+import com.Phisher98.StreamPlayExtractor.invokeWyZIESUBAPI
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.Actor
 import com.lagradost.cloudstream3.ActorData
@@ -118,12 +122,10 @@ open class StreamPlay : TmdbProvider() {
         const val anilistAPI = "https://graphql.anilist.co"
         const val malsyncAPI = "https://api.malsync.moe"
         const val jikanAPI = "https://api.jikan.moe/v4"
-
         private const val apiKey = BuildConfig.TMDB_API
 
         /** ALL SOURCES */
         const val twoEmbedAPI = "https://www.2embed.cc"
-        const val vidSrcAPI = "https://vidsrc.me"
         const val dreamfilmAPI = "https://dreamfilmsw.info"
         const val noverseAPI = "https://www.thenollyverse.com"
         const val filmxyAPI = "https://www.filmxy.online"
@@ -151,14 +153,14 @@ open class StreamPlay : TmdbProvider() {
         const val zshowAPI = BuildConfig.ZSHOW_API
         const val ridomoviesAPI = "https://ridomovies.tv"
         const val emoviesAPI = "https://emovies.si"
-        const val multimoviesAPI = "https://multimovies.bond"
+        const val multimoviesAPI = "https://multimovies.lat"
         const val netmoviesAPI = "https://web.netmovies.to"
         const val allmovielandAPI = "https://allmovieland.fun"
         const val doomoviesAPI = "https://doomovies.net"
         const val vidsrctoAPI = "https://vidsrc.cc"
         const val dramadayAPI = "https://dramaday.me"
         const val animetoshoAPI = "https://animetosho.org"
-        const val showflixAPI = "https://showflix.xyz"
+        const val showflixAPI = "https://showflix.site"
         const val aoneroomAPI = "https://api3.aoneroom.com"
         const val watchCartoonAPI = "https://www1.watchcartoononline.bz"
         const val moflixAPI = "https://moflix-stream.xyz"
@@ -167,13 +169,13 @@ open class StreamPlay : TmdbProvider() {
         const val fdMoviesAPI = "https://freedrivemovie.com"
         const val uhdmoviesAPI = "https://uhdmovies.icu"
         const val topmoviesAPI = "https://topmovies.icu"
-        const val MoviesmodAPI= "https://moviesmod.rip"
+        const val MoviesmodAPI= "https://moviesmod.bot"
         const val hdmovies4uAPI = "https://hdmovies4u.boston"
         const val vegaMoviesAPI = "https://vegamovies.ps"
         const val dotmoviesAPI = "https://luxmovies.live"
         const val tvMoviesAPI = "https://www.tvseriesnmovies.com"
         const val dahmerMoviesAPI="https://a.datadiff.us.kg"
-        const val MovieDrive_API="https://moviesdrive.world"
+        const val MovieDrive_API="https://moviesdrive.cloud"
         const val Asiandrama_API=BuildConfig.AsianDrama_API
         const val bollyflixAPI = "https://bollyflix.ninja"
         const val movies4u = "https://movies4u.gb.net"
@@ -183,10 +185,16 @@ open class StreamPlay : TmdbProvider() {
         const val BollyflixVIP= "https://bollyflix.meme"
         const val FlixAPI= BuildConfig.FlixAPI
         const val NyaaAPI="https://nyaa.land"
-        const val Extramovies="https://extramovies.poker"
+        const val Extramovies="https://extramovies.soy"
         const val WhvxAPI=BuildConfig.WhvxAPI
         const val Sharmaflix= BuildConfig.SharmaflixApi
         const val SubtitlesAPI="https://opensubtitles-v3.strem.io"
+        const val BroflixVidlink="https://bombthe.irish"
+        const val EmbedSu="https://embed.su"
+        const val FlickyAPI="https://www.flicky.host"
+        const val WyZIESUBAPI="https://sub.wyzie.ru"
+        const val Theyallsayflix=BuildConfig.Theyallsayflix
+        const val TomAPI="https://tom.autoembed.cc"
         fun getType(t: String?): TvType {
             return when (t) {
                 "movie" -> TvType.Movie
@@ -230,7 +238,6 @@ open class StreamPlay : TmdbProvider() {
         "$tmdbAPI/discover/tv?api_key=$apiKey&with_keywords=210024|222243" to "Anime",
         "$tmdbAPI/discover/movie?api_key=$apiKey&with_keywords=210024|222243" to "Anime Movies",
     )
-
     private fun getImageUrl(link: String?): String? {
         if (link == null) return null
         return if (link.startsWith("/")) "https://image.tmdb.org/t/p/w500/$link" else link
@@ -240,7 +247,6 @@ open class StreamPlay : TmdbProvider() {
         if (link == null) return null
         return if (link.startsWith("/")) "https://image.tmdb.org/t/p/original/$link" else link
     }
-
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val adultQuery =
             if (settingsForProvider.enableAdult) "" else "&without_keywords=190370|13059|226161|195669"
@@ -472,9 +478,12 @@ open class StreamPlay : TmdbProvider() {
                    )
                 },
              */
-                {
-                    invokeVidSrc(res.id, res.season, res.episode, subtitleCallback,callback)
-                },
+            {
+                invokeEmbedsu(res.imdbId, res.season, res.episode,callback)
+            },
+            {
+                invokeTheyallsayflix(res.imdbId, res.season, res.episode,callback)
+            },
                 {
                     if (!res.isAnime) invokeAoneroom(
                         res.title, res.airedYear
@@ -484,6 +493,7 @@ open class StreamPlay : TmdbProvider() {
                 {
                     if (res.isAnime) invokeAnimes(
                         res.title,
+                        res.jpTitle,
                         res.epsTitle,
                         res.date,
                         res.airedDate,
@@ -534,8 +544,8 @@ open class StreamPlay : TmdbProvider() {
                     )
                 },
                 {
-                    if (!res.isAnime) invokeVidsrcto(
-                        res.imdbId,
+                    if (!res.isAnime) invokeVidsrccc(
+                        res.id,
                         res.season,
                         res.episode,
                         subtitleCallback,
@@ -653,8 +663,11 @@ open class StreamPlay : TmdbProvider() {
                 )
             },
         {
-        if (!res.isAnime) invokeFDMovies(res.title, res.season, res.episode, callback)
+        invokeFDMovies(res.title, res.season, res.episode, callback)
     },
+            {
+                if (!res.isAnime) invokeFlicky(res.id, res.season, res.episode, callback)
+            },
     {
         if (!res.isAnime) invokeM4uhd(
             res.title, res.airedYear
@@ -799,11 +812,6 @@ open class StreamPlay : TmdbProvider() {
     {
          if (!res.isAnime) invokeExtramovies(
                     res.imdbId,
-                    res.title,
-                    res.year,
-                    res.season,
-                    res.lastSeason,
-                    res.episode,
                     subtitleCallback,
                     callback
                 )
@@ -815,19 +823,21 @@ open class StreamPlay : TmdbProvider() {
                     res.title,
                     res.year,
                     res.season,
-                    res.lastSeason,
                     res.episode,
-                    subtitleCallback,
                     callback
                 )
     },
+            {
+
+                if (!res.isAnime) invokeBroflixVidlink(
+                    res.id,
+                    subtitleCallback,
+                    callback
+                )
+            },
     {
         invokeSharmaflix(
                     res.title,
-                    res.year,
-                    res.season,
-                    res.episode,
-                    subtitleCallback,
                     callback
         )
     },
@@ -912,7 +922,7 @@ open class StreamPlay : TmdbProvider() {
         )
     },
     {
-        if (!res.isAsian && !res.isBollywood) invokeZshow(
+        if (!res.isAsian && !res.isBollywood &&!res.isAnime) invokeZshow(
             res.title,
             res.year,
             res.season,
@@ -934,6 +944,9 @@ open class StreamPlay : TmdbProvider() {
     {
         if (!res.isAnime) invokeMoflix(res.id, res.season, res.episode, callback)
     },
+            {
+                if (!res.isAnime) invokeTom(res.id, res.season, res.episode,subtitleCallback,callback)
+            },
     {
         if (!res.isAnime) invokeZoechip(
             res.title,
@@ -992,17 +1005,8 @@ open class StreamPlay : TmdbProvider() {
       )
 },
 {
-    invokeFlixAPI(
+    if (!res.isAnime) invokeFlixAPI(
         res.tvdbId,
-        res.season,
-        res.episode,
-        subtitleCallback,
-        callback
-    )
-},
-{
-    if (res.isAnime) invokenyaa(
-        res.title,
         res.season,
         res.episode,
         subtitleCallback,
@@ -1017,6 +1021,15 @@ open class StreamPlay : TmdbProvider() {
         subtitleCallback,
         callback
     )
+},
+{
+     invokeWyZIESUBAPI(
+        res.imdbId,
+        res.season,
+         res.episode,
+         subtitleCallback,
+         callback
+     )
 }
 
 

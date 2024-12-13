@@ -225,31 +225,25 @@ data class Link(
     val type: String,
     val url: String
 )
-//
 
-//Dramacool
-
-
-data class StreamwishD(
-    val server: String,
+//Flicky
+data class FlickyStream(
     val link: String,
-    val active: Long,
+    val language: String
 )
 
-data class Backup(
-    val server: String,
-    val link: String,
-)
+//WyZIESUBAPI
 
-
-data class KissasianAPISourceresponse(
-    @JsonProperty("type") val type: String,
-    @JsonProperty("link") val link: String? = null,
+data class WyZIESUB(
+    val id: String,
+    val url: String,
+    val flagUrl: String,
+    val format: String,
+    val display: String,
+    val language: String,
+    val media: String,
+    val isHearingImpaired: Boolean,
 )
-data class KissasianAPIResponse(
-        @JsonProperty("status") val status: Boolean,
-        @JsonProperty("html") val html: String
-    )
 
 data class UHDBackupUrl(
     @JsonProperty("url") val url: String? = null,
@@ -542,6 +536,42 @@ data class GokuData(
 data class GokuServer(
     @JsonProperty("data") val data: GokuData? = GokuData(),
 )
+//Tom
+
+data class TomResponse (
+    var videoSource    : String,
+    var subtitles      : ArrayList<TomSubtitles> = arrayListOf(),
+)
+
+data class TomSubtitles (
+    var file    : String,
+    var label   : String
+)
+
+//Gojo
+
+data class Gojoresponseshashh(
+    val sources: List<shashhSource>,
+    val thumbs: String,
+    val skips: Any?,
+)
+
+data class shashhSource(
+    val quality: String,
+    val url: String,
+)
+
+data class Gojoresponsevibe(
+    val sources: List<vibeSource>,
+    val skips: Any?,
+)
+
+data class vibeSource(
+    val url: String,
+    val quality: String,
+    val type: String,
+)
+
 
 //MiruroanimeGogo
 
@@ -728,6 +758,31 @@ data class AoneroomResponse(
     }
 }
 
+//
+
+data class Aoneroomep(
+    val code: Long,
+    val message: String,
+    val data: AoneroomepData,
+)
+
+data class AoneroomepData(
+    val streams: List<AoneroomepStream>,
+    val title: String,
+)
+
+data class AoneroomepStream(
+    val format: String,
+    val id: String,
+    val url: String,
+    val resolutions: String,
+    val size: String,
+    val duration: Long,
+    val codecName: String,
+    val signCookie: String,
+)
+
+
 data class CinemaTvResponse(
     @JsonProperty("streams") val streams: HashMap<String, String>? = null,
     @JsonProperty("subtitles") val subtitles: ArrayList<Subtitles>? = arrayListOf(),
@@ -870,6 +925,36 @@ data class Captionplaylist(
     val language: String,
 )
 
+//
+
+data class Embedsu(
+    val title: String,
+    val server: String,
+    val ref: String,
+    val xid: String,
+    val uwuId: String,
+    val episodeId: String,
+    val hash: String,
+    val poster: String,
+)
+
+data class EmbedsuItem(val name: String, val hash: String)
+
+
+data class Embedsuhref(
+    val source: String,
+    val subtitles: List<EmbedsuhrefSubtitle>,
+    val skips: List<Any?>,
+    val format: String,
+)
+
+data class EmbedsuhrefSubtitle(
+    val label: String,
+    val file: String,
+)
+
+
+
 
 data class SubtitlesAPI(
     val subtitles: List<Subtitle>,
@@ -886,5 +971,49 @@ data class Subtitle(
     val g: String,
 )
 
+// Theyallsayflix
 
+data class Theyallsayflix(
+    val error: Boolean,
+    val title: String,
+    @JsonProperty("poster_url")
+    val posterUrl: String,
+    @JsonProperty("backdrop_url")
+    val backdropUrl: String,
+    @JsonProperty("release_date")
+    val releaseDate: String,
+    val rating: Double,
+    val desc: String,
+    @JsonProperty("original_lang")
+    val originalLang: String,
+    val minutes: Long,
+    val status: String,
+    @JsonProperty("status_desc")
+    val statusDesc: String,
+    val streams: List<TheyallsayflixStream>,
+    val subtitles: List<TheyallsayflixSubtitle>,
+)
+
+data class TheyallsayflixStream(
+    val quality: Long,
+    @JsonProperty("file_size")
+    val fileSize: Long,
+    @JsonProperty("file_name")
+    val fileName: String,
+    @JsonProperty("play_url")
+    val playUrl: String,
+)
+
+data class TheyallsayflixSubtitle(
+    @JsonProperty("lang_code")
+    val langCode: String,
+    @JsonProperty("lang_name")
+    val langName: String,
+    @JsonProperty("sub_name")
+    val subName: String,
+    @JsonProperty("is_hearing_impaired")
+    val isHearingImpaired: Boolean,
+    @JsonProperty("download_link")
+    val downloadLink: String,
+)
 

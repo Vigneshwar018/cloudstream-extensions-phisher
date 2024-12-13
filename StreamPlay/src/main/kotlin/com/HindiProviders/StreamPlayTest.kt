@@ -1,14 +1,20 @@
 package com.Phisher98
 
 import android.util.Log
-import com.Phisher98.StreamPlayExtractor.invokeAllMovieland
-import com.Phisher98.StreamPlayExtractor.invokeExtramovies
+import com.Phisher98.StreamPlayExtractor.invokeAoneroom
+import com.Phisher98.StreamPlayExtractor.invokeEmbedsu
+import com.Phisher98.StreamPlayExtractor.invokeFlicky
 import com.Phisher98.StreamPlayExtractor.invokeFlixAPI
-import com.Phisher98.StreamPlayExtractor.invokeSharmaflix
+import com.Phisher98.StreamPlayExtractor.invokeShowflix
 import com.Phisher98.StreamPlayExtractor.invokeSubtitleAPI
+import com.Phisher98.StreamPlayExtractor.invokeTheyallsayflix
+import com.Phisher98.StreamPlayExtractor.invokeTom
 import com.Phisher98.StreamPlayExtractor.invokeVidbinge
-import com.Phisher98.StreamPlayExtractor.invokenyaa
+import com.Phisher98.StreamPlayExtractor.invokeVidsrccc
+import com.Phisher98.StreamPlayExtractor.invokeWyZIESUBAPI
+import com.Phisher98.StreamPlayExtractor.invokeazseries
 import com.lagradost.cloudstream3.SubtitleFile
+import com.lagradost.cloudstream3.TvType
 import com.lagradost.cloudstream3.argamap
 import com.lagradost.cloudstream3.utils.AppUtils
 import com.lagradost.cloudstream3.utils.ExtractorLink
@@ -26,23 +32,17 @@ class StreamPlayTest : StreamPlay() {
         Log.d("Test1", "$res")
         argamap(
             {
-                invokeSharmaflix(
-                    res.title,
-                    res.year,
-                    res.season,
-                    res.episode,
-                    subtitleCallback,
-                    callback
-                )
+                invokeTheyallsayflix(res.imdbId, res.season, res.episode,callback)
             },
             {
-                invokeSubtitleAPI(
-                    res.imdbId,
+                if (!res.isAnime) invokeazseries(
+                    res.title,
                     res.season,
                     res.episode,
                     subtitleCallback,
                     callback
                 )
+
             }
 
         )

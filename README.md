@@ -1,6 +1,7 @@
 [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Fphisher98%2FPhisher98%2F&count_bg=%23060606&title_bg=%23FC6005&icon=mediafire.svg&icon_color=%23FFFFFF&title=Avg+%2F+Hits&edge_flat=false)](https://hits.seeyoufarm.com)
 
-[![Discord](https://invidget.switchblade.xyz/wpX5Rfcx87)](https://discord.com/invite/wpX5Rfcx87)
+Shortcode: phisherrepo
+
 
 ### 🕹 Tools and Programming languages used :
 <p align="left">

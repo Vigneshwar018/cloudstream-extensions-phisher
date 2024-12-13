@@ -4,7 +4,10 @@ import android.annotation.SuppressLint
 import android.util.Log
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.lagradost.cloudstream3.*
+import com.lagradost.cloudstream3.APIHolder.capitalize
 import com.lagradost.cloudstream3.APIHolder.unixTimeMS
 import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
@@ -12,7 +15,6 @@ import com.lagradost.nicehttp.Requests
 import com.lagradost.nicehttp.Session
 import com.lagradost.cloudstream3.extractors.helper.AesHelper.cryptoAESHandler
 import com.lagradost.cloudstream3.mvvm.safeApiCall
-import com.lagradost.cloudstream3.network.WebViewResolver
 import com.lagradost.nicehttp.RequestBodyTypes
 import kotlinx.coroutines.delay
 import okhttp3.Interceptor
@@ -23,7 +25,6 @@ import org.jsoup.select.Elements
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import org.mozilla.javascript.Scriptable
 import com.lagradost.cloudstream3.extractors.VidSrcTo
-import com.lagradost.cloudstream3.extractors.VidSrcExtractor
 import com.lagradost.cloudstream3.extractors.helper.GogoHelper
 import com.lagradost.cloudstream3.network.CloudflareKiller
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
@@ -116,22 +117,6 @@ object StreamPlayExtractor : StreamPlay() {
         }
     }
 */
-    @SuppressLint("SuspiciousIndentation")
-    suspend fun invokeVidSrc(
-        id: Int? = null,
-        season: Int? = null,
-        episode: Int? = null,
-        subtitleCallback: (SubtitleFile) -> Unit,
-        callback: (ExtractorLink) -> Unit
-    ) {
-        val url = if (season == null) {
-            "$vidSrcAPI/embed/movie?tmdb=$id"
-        } else {
-            "$vidSrcAPI/embed/tv?tmdb=$id&season=$season&episode=$episode"
-        }
-        VidSrcExtractor().getUrl(url, url, subtitleCallback, callback)
-    }
-
     suspend fun invokeDreamfilm(
         title: String? = null,
         season: Int? = null,
@@ -177,6 +162,7 @@ object StreamPlayExtractor : StreamPlay() {
         val res = app.get(url, referer = url).document
         val script =
             res.selectFirst("script:containsData(function(h,u,n,t,e,r))")?.data()
+        Log.d("Phisher", script.toString())
         if (script!=null) {
             val firstJS =
                 """
@@ -388,6 +374,7 @@ object StreamPlayExtractor : StreamPlay() {
                     referer = url,
                     headers = mapOf("X-Requested-With" to "XMLHttpRequest")
                 ).parsed<ResponseHash>().embed_url
+                Log.d("Phisher",source)
                 val link = source.substringAfter("\"").substringBefore("\"")
                 when {
                     !link.contains("youtube") -> {
@@ -408,47 +395,65 @@ object StreamPlayExtractor : StreamPlay() {
         callback: (ExtractorLink) -> Unit,
     ) {
         val headers =
-            mapOf("Authorization" to "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOjcyODc3MjQ5OTg4MzA0NzM5NzYsInV0cCI6MSwiZXhwIjoxNzEwMzg4NzczLCJpYXQiOjE3MDI2MTI3NzN9.Myt-gVHfPfQFbFyRX3WXtiiwvRzDwBrXTEKy1l-GDRU")
-        val subjectId = app.post(
+            mapOf("Authorization" to "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOjg5OTM3MDA1MDUzOTQ1NDk2OCwiZXhwIjoxNzQxMTk0NDg4LCJpYXQiOjE3MzM0MTg0ODh9.UQ7pslt7o85nuNW14jchnrp7DxpQT0d0vl50kDTXSnI")
+        val subjectIds = app.post(
             "$aoneroomAPI/wefeed-mobile-bff/subject-api/search", data = mapOf(
                 "page" to "1",
                 "perPage" to "10",
                 "keyword" to "$title",
                 "subjectType" to if (season == null) "1" else "2",
             ), headers = headers
-        ).parsedSafe<AoneroomResponse>()?.data?.items?.find {
-            it.title.equals(
-                title,
-                true
-            ) && it.releaseDate?.substringBefore("-") == "$year"
-        }?.subjectId
-
-        val data = app.get(
-            "$aoneroomAPI/wefeed-mobile-bff/subject-api/resource?subjectId=${subjectId ?: return}&page=1&perPage=20&all=0&startPosition=1&endPosition=1&pagerMode=0&resolution=480",
-            headers = headers
-        ).parsedSafe<AoneroomResponse>()?.data?.list?.findLast {
-            it.se == (season ?: 0) && it.ep == (episode ?: 0)
-        }
-
-        callback.invoke(
-            ExtractorLink(
-                "Aoneroom",
-                "Aoneroom",
-                data?.resourceLink
-                    ?: return,
-                "",
-                data.resolution ?: Qualities.Unknown.value,
-                INFER_TYPE
-            )
-        )
-
-        data.extCaptions?.map { sub ->
-            subtitleCallback.invoke(
-                SubtitleFile(
-                    sub.lanName ?: return@map,
-                    sub.url ?: return@map,
+        ).parsedSafe<AoneroomResponse>()?.data?.items?.filter {
+            it.title?.contains("$title", ignoreCase = true) ?: return &&
+                    it.releaseDate?.substringBefore("-") == year.toString()
+        } // Filter by title and release year
+            ?.map { it.subjectId }
+        subjectIds?.forEach { subjectId ->
+            val data = app.get(
+                "$aoneroomAPI/wefeed-mobile-bff/subject-api/resource?subjectId=${subjectId ?: return}",
+                headers = headers
+            ).parsedSafe<AoneroomResponse>()?.data?.list?.findLast {
+                it.se == (season ?: 0) && it.ep == (episode ?: 0)
+            }
+            if (episode!=null)
+            {
+                app.get(
+                    "$aoneroomAPI/wefeed-mobile-bff/subject-api/play-info?subjectId=$subjectId&se=$season&ep=$episode",
+                    headers = headers
+                ).parsedSafe<Aoneroomep>()?.data?.streams?.map {
+                    val res= it.resolutions.toInt()
+                    callback.invoke(
+                        ExtractorLink(
+                            "Aoneroom",
+                            "Aoneroom",
+                            it.url,
+                            "",
+                            res,
+                            INFER_TYPE
+                        )
+                    )
+                }
+            }
+            callback.invoke(
+                ExtractorLink(
+                    "Aoneroom",
+                    "Aoneroom",
+                    data?.resourceLink
+                        ?: return,
+                    "",
+                    data.resolution ?: Qualities.Unknown.value,
+                    INFER_TYPE
                 )
             )
+
+            data.extCaptions?.map { sub ->
+                subtitleCallback.invoke(
+                    SubtitleFile(
+                        sub.lanName ?: return@map,
+                        sub.url ?: return@map,
+                    )
+                )
+            }
         }
 
     }
@@ -806,7 +811,6 @@ object StreamPlayExtractor : StreamPlay() {
             "$dramadayAPI/$slug/"
         }
         val res = app.get(url).document
-        //Log.d("Phisher",url)
         val servers = if (season == null) {
             val player = res.select("div.tabs__pane p a[href*=https://]").attr("href")
             val ouo = bypassOuo(player)
@@ -912,11 +916,10 @@ object StreamPlayExtractor : StreamPlay() {
         } else {
             "$azseriesAPI/episodes/$fixTitle-season-$season-episode-$episode"
         }
-        val res = app.get(url, referer = azseriesAPI)
-        if (res.code == 200) {
+        val res = app.get("$url", referer = azseriesAPI)
             val document = res.document
             val id = document.selectFirst("#show_player_lazy")?.attr("movie-id").toString()
-            val server_doc = app.post(
+        val server_doc = app.post(
                 url = "$azseriesAPI/wp-admin/admin-ajax.php", data = mapOf(
                     "action" to "lazy_player",
                     "movieID" to id
@@ -933,7 +936,6 @@ object StreamPlayExtractor : StreamPlay() {
                     loadExtractor(response, subtitleCallback, callback)
                 }
             }
-        }
     }
 
     suspend fun invokeDumpStream(
@@ -1058,7 +1060,6 @@ object StreamPlayExtractor : StreamPlay() {
             season == null -> "2"
             else -> "1"
         }
-        Log.d("Phisher", "$kissKhAPI/api/DramaList/Search?q=$title&type=$type".toString())
         val response = app.get(
             "$kissKhAPI/api/DramaList/Search?q=$title&type=$type",
             referer = "$kissKhAPI/"
@@ -1089,7 +1090,6 @@ object StreamPlayExtractor : StreamPlay() {
                     getKisskhTitle(contentTitle)
                 }?id=$id"
             ).parsedSafe<KisskhDetail>() ?: return
-            Log.d("Phisher", resDetail.toString())
             val epsId = if (season == null) {
                 resDetail.episodes?.first()?.id
             } else {
@@ -1144,6 +1144,7 @@ object StreamPlayExtractor : StreamPlay() {
 
     suspend fun invokeAnimes(
         title: String? = null,
+        jptitle:String? =null,
         epsTitle: String? = null,
         date: String?,
         airedDate: String?,
@@ -1165,7 +1166,7 @@ object StreamPlayExtractor : StreamPlay() {
         val zoroIds = malsync?.zoro?.keys?.map { it }
         val TMDBdate=date?.substringBefore("-")
         val zorotitle = malsync?.zoro?.firstNotNullOf { it.value["title"] }?.replace(":"," ")
-        val year=airedDate?.substringBefore("-")
+        Log.d("Phisher zoroIds", zoroIds.toString())
         argamap(
             {
                 invokeAnimetosho(malId, season, episode, subtitleCallback, callback)
@@ -1185,6 +1186,11 @@ object StreamPlayExtractor : StreamPlay() {
                 val animepahe = malsync?.animepahe?.firstNotNullOfOrNull { it.value["url"] }
                 if (animepahe!=null)
                 invokeAnimepahe(animepahe, episode, subtitleCallback, callback)
+            },
+            {
+                val aniid=malsync?.Gogoanime?.firstNotNullOf { it.value["aniId"] }
+                val jptitleslug=jptitle.createSlug()
+                invokeGojo(aniid,jptitleslug, episode, subtitleCallback, callback)
             },
             {
                 invokeAnichi(zorotitle,Season,TMDBdate, episode, subtitleCallback, callback)
@@ -1221,12 +1227,10 @@ object StreamPlayExtractor : StreamPlay() {
             }
             val query="""$api?variables={"search":{"types":["$type"],"year":$year,"season":"$season","query":"$name"},"limit":26,"page":1,"translationType":"sub","countryOrigin":"ALL"}&extensions={"persistedQuery":{"version":1,"sha256Hash":"$queryhash"}}"""
             val response= app.get(query, referer = privatereferer).parsedSafe<Anichi>()?.data?.shows?.edges
-        Log.d("Phisher Anichi response", response.toString())
         if (response!=null) {
             val id = response.apmap {
                 it.id
             }.firstOrNull()
-            Log.d("Phisher Anichi id", id.toString())
             val langType = listOf("sub", "dub")
             for (i in langType) {
                 val epData =
@@ -1243,7 +1247,6 @@ object StreamPlayExtractor : StreamPlay() {
                                 val sourcename=downloadUrl.getHost()
                                 app.get("https://allanime.day/apivtwo/clock.json?id=$downloadid").parsedSafe<AnichiDownload>()?.links?.amap {
                                     val href=it.link
-                                    Log.d("Phisher Blog:", href.toString())
                                     loadNameExtractor(
                                         "Anichi [${i.uppercase()}] [$sourcename]",
                                         href,
@@ -1326,6 +1329,54 @@ object StreamPlayExtractor : StreamPlay() {
             }
     }
 
+    private suspend fun invokeGojo(
+        aniid: String? = null,
+        jptitle:String?=null,
+        episode: Int? = null,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        val sourcelist = listOf("shashh", "roro", "vibe")
+        for (source in sourcelist)
+        {
+            Log.d("Phisher gojo",source)
+            val headers= mapOf("Origin" to "https://gojo.wtf")
+            if (source=="shashh")
+            {
+                val response = app.get("${BuildConfig.GojoAPI}/api/anime/tiddies?provider=$source&id=$aniid&watchId=$jptitle-episode-$episode", headers = headers)
+                    .parsedSafe<Gojoresponseshashh>()?.sources?.map { it.url }
+                val m3u8=response.toString()
+                callback.invoke(
+                    ExtractorLink(
+                        "GojoAPI [${source.capitalize()}]",
+                        "GojoAPI [${source.capitalize()}]",
+                        m3u8,
+                        "",
+                        Qualities.P1080.value,
+                        ExtractorLinkType.M3U8,
+                        headers = headers
+                    )
+                )
+            }
+            else{
+                val response = app.get("${BuildConfig.GojoAPI}/api/anime/tiddies?provider=$source&id=$aniid&watchId=$jptitle-episode-$episode", headers = headers)
+                    .parsedSafe<Gojoresponsevibe>()?.sources?.map { it.url }
+                val m3u8=response.toString()
+                callback.invoke(
+                    ExtractorLink(
+                        "GojoAPI [${source.capitalize()}]",
+                        "GojoAPI [${source.capitalize()}]",
+                        m3u8,
+                        "",
+                        Qualities.P1080.value,
+                        ExtractorLinkType.M3U8,
+                        headers = headers
+                    )
+                )
+            }
+        }
+    }
+
 
     private suspend fun invokeAniwave(
         url: String? = null,
@@ -1382,7 +1433,7 @@ object StreamPlayExtractor : StreamPlay() {
     ) {
         fun Elements.getLinks(): List<Triple<String, String, Int>> {
             return this.flatMap { ele ->
-                ele.select("div.links a:matches(KrakenFiles|GoFile|Magnet|Torrent)").map {
+                ele.select("div.links a:matches(KrakenFiles|GoFile)").map {
                     Triple(
                         it.attr("href"),
                         ele.select("div.size").text(),
@@ -1411,22 +1462,7 @@ object StreamPlayExtractor : StreamPlay() {
                     Qualities.P1080.value,
                     Qualities.P720.value
                 )
-            }
-                .apmap {
-                    if(it.first.startsWith("magnet")||it.first.startsWith("Torrent"))
-                    {
-                        callback.invoke(
-                            ExtractorLink(
-                                "Animetosho Torrent",
-                                "Animetosho Torrent",
-                                it.first,
-                                "",
-                                it.third,
-                                INFER_TYPE
-                            )
-                        )
-                    }
-                    else
+            }.map {
                     loadCustomTagExtractor(
                         it.second,
                         it.first,
@@ -1468,7 +1504,6 @@ object StreamPlayExtractor : StreamPlay() {
                         it.attr("data-type"),
                     )
                 }
-            Log.d("Phisher Hi",servers.toString())
             servers?.map servers@{ server ->
                 val iframe = app.get(
                     "$hianimeAPI/ajax/v2/episode/sources?id=${server.second ?: return@servers}",
@@ -1476,7 +1511,7 @@ object StreamPlayExtractor : StreamPlay() {
                 ).parsedSafe<HianimeResponses>()?.link
                     ?: return@servers
                 val audio = if (server.third == "sub") "Raw" else "English Dub"
-                Log.d("Phisher Hi",iframe)
+                Log.d("Phisher",iframe.toString())
                 loadCustomExtractor(
                     "HiAnime ${server.first} [$audio]",
                     iframe,
@@ -1653,13 +1688,43 @@ object StreamPlayExtractor : StreamPlay() {
             "$SubtitlesAPI/subtitles/series/$id:$season:$episode.json"
         }
         val headers = mapOf(
-            "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
             "User-Agent" to "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
         )
-        app.get(url, headers = headers, timeout = 100L).parsedSafe<SubtitlesAPI>()?.subtitles?.amap {
+    Log.d("Phisher", url)
+    app.get(url, headers = headers, timeout = 100L).parsedSafe<SubtitlesAPI>()?.subtitles?.amap {
             val lan=it.lang
+            val suburl=it.url ?: null
+            if (suburl!=null)
+            subtitleCallback.invoke(
+                SubtitleFile(
+                    lan.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },  // Use label for the name
+                    suburl     // Use extracted URL
+                )
+            )
+        }
+    }
+
+    suspend fun invokeWyZIESUBAPI(
+        id: String? = null,
+        season: Int? = null,
+        episode: Int? = null,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit,
+    ) {
+        val url = if(season == null) {
+            "$WyZIESUBAPI/search?id=$id"
+        }
+        else {
+            "$WyZIESUBAPI/search?id=$id/$season/$episode"
+        }
+
+        val res=app.get(url).toString()
+        val gson = Gson()
+        val listType = object : TypeToken<List<WyZIESUB>>() {}.type
+        val subtitles: List<WyZIESUB> = gson.fromJson(res, listType)
+        subtitles.map {
+            val lan=it.display
             val suburl=it.url
-            Log.d("Phisher","$lan $suburl")
             subtitleCallback.invoke(
                 SubtitleFile(
                     lan.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },  // Use label for the name
@@ -1909,7 +1974,7 @@ object StreamPlayExtractor : StreamPlay() {
         val (seasonSlug, episodeSlug) = getEpisodeSlug(season, episode)
         val cfInterceptor = CloudflareKiller()
         val fixtitle = title?.substringBefore("-")?.substringBefore(":")?.replace("&", " ")
-        Log.d("Phisher url veg", "$api/search/$imdbId")
+        //Log.d("Phisher url veg", "$api/search/$imdbId")
         val url = if (season == null) {
             "$api/search/$imdbId"
         } else {
@@ -1923,7 +1988,7 @@ object StreamPlayExtractor : StreamPlay() {
                 )
             }
             .amap {
-                Log.d("Phisher url veg", it.toString())
+                //Log.d("Phisher url veg", it.toString())
                 val hrefpattern =
                     Regex("""(?i)<a\s+href="([^"]+)"[^>]*?>[^<]*?\b($fixtitle)\b[^<]*?""").find(
                         it.toString()
@@ -1956,10 +2021,9 @@ object StreamPlayExtractor : StreamPlay() {
                         }?.map { anchor ->
                             anchor.attr("href")
                         } ?: emptyList()
-                        Log.d("Phisher url entries", href.toString())
                         val selector =
                             if (season == null) "p a:matches(V-Cloud|G-Direct)" else "h4:matches(0?$episode)"
-                        Log.d("Phisher url veg", href.toString())
+                        //Log.d("Phisher href", href.toString())
                         if (href.isNotEmpty()) {
                             href.amap { url ->
                             if (season==null)
@@ -1982,6 +2046,7 @@ object StreamPlayExtractor : StreamPlay() {
                             {
                                 app.get(url, interceptor = wpRedisInterceptor).document.select("div.entry-content > $selector")
                                     .forEach { h4Element ->
+                                        Log.d("Phisher href veg", (h4Element ?: "").toString())
                                         var sibling = h4Element.nextElementSibling()
                                         while (sibling != null && sibling.tagName() != "p") {
                                             sibling = sibling.nextElementSibling()
@@ -1989,7 +2054,7 @@ object StreamPlayExtractor : StreamPlay() {
                                         while (sibling != null && sibling.tagName() == "p") {
                                             sibling.select("a:matches(V-Cloud|G-Direct)").forEach { sources ->
                                                 val server = sources.attr("href")
-                                                Log.d("Phisher href veg", tags ?: "")
+                                                Log.d("Phisher href veg", server ?: "")
                                                 loadSourceNameExtractor(
                                                     "V-Cloud",
                                                     server,
@@ -2010,13 +2075,44 @@ object StreamPlayExtractor : StreamPlay() {
             }
     }
 
+    suspend fun invokeTom(
+        id: Int? = null,
+        season: Int? = null,
+        episode: Int? = null,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        val url = if(season == null) "$TomAPI/api/getVideoSource?type=movie&id=$id" else "$TomAPI/api/getVideoSource?type=tv&id=$id/$season/$episode"
+        val headers = mapOf(
+            "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:101.0) Gecko/20100101 Firefox/101.0",
+            "Referer" to "https://autoembed.cc"
+        )
+        val json = app.get(url, headers = headers).text
+        val data = tryParseJson<TomResponse>(json) ?: return
+
+        callback.invoke(
+            ExtractorLink(
+                "Tom Embeded",
+                "Tom Embeded",
+                data.videoSource,
+                "",
+                Qualities.P1080.value,
+                true
+            )
+        )
+
+        data.subtitles.map {
+            subtitleCallback.invoke(
+                SubtitleFile(
+                    it.label,
+                    it.file,
+                )
+            )
+        }
+    }
+
     suspend fun invokeExtramovies(
         imdbId: String? = null,
-        title: String? = null,
-        year: Int? = null,
-        season: Int? = null,
-        lastSeason: Int? = null,
-        episode: Int? = null,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
@@ -2042,13 +2138,11 @@ object StreamPlayExtractor : StreamPlay() {
         title: String? = null,
         year: Int? = null,
         season: Int? = null,
-        lastSeason: Int? = null,
         episode: Int? = null,
-        subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
         val type=if (season==null) "movie" else "tv"
-        val servers = listOf("astra", "orion")
+        val servers = listOf("astra", "orion","nova")
         for(source in servers) {
             val token= app.get(BuildConfig.WhvxT).parsedSafe<Vidbinge>()?.token ?:""
             val s= season ?: ""
@@ -2057,7 +2151,7 @@ object StreamPlayExtractor : StreamPlay() {
             val encodedQuery = encodeQuery(query)
             val encodedToken = encodeQuery(token)
             val originalUrl = "$WhvxAPI/search?query=$encodedQuery&provider=$source&token=$encodedToken"
-            Log.d("Phisher", originalUrl)
+            //Log.d("Phisher", originalUrl)
             val headers = mapOf(
                 "accept" to "*/*",
                 "origin" to "https://www.vidbinge.com",
@@ -2066,12 +2160,13 @@ object StreamPlayExtractor : StreamPlay() {
             val oneurl= app.get(originalUrl, headers=headers, timeout = 50L).parsedSafe<Vidbingesources>()?.url
             oneurl?.let {
                 val encodedit=encodeQuery(it)
-                Log.d("Phisher", encodedit)
-                app.get("$WhvxAPI/source?resourceId=$encodedit&provider=$source",headers=headers).parsedSafe<Vidbingeplaylist>()?.stream?.map {
+                Log.d("Phisher", "$source $encodedit")
+                app.get("$WhvxAPI/source?resourceId=$encodedit&provider=$source",headers=headers).parsedSafe<Vidbingeplaylist>()?.stream?.amap {
+                    Log.d("Phisher", "$source ${it.playlist}")
                     val playlist=it.playlist
                     callback.invoke(
                         ExtractorLink(
-                            "Vidbinge $source", "Vidbinge $source", playlist
+                            "Vidbinge ${source.capitalize()}", "Vidbinge ${source.capitalize()}", playlist
                             , "", Qualities.P1080.value, INFER_TYPE
                         )
                     )
@@ -2080,12 +2175,23 @@ object StreamPlayExtractor : StreamPlay() {
         }
     }
 
+    suspend fun invokeBroflixVidlink(
+        tmdbId: Int?=null,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        val url = "$BroflixVidlink/embed/movie/$tmdbId"
+        app.get(url).document.select("div.menu a").amap {
+            val encoded=it.attr("data-url").substringAfter("url=")
+            val href=base64Decode(encoded)
+            loadSourceNameExtractor("Broflix Vidlink",href,"",subtitleCallback,callback,
+                getQualityFromName("")
+            )
+        }
+    }
+
     suspend fun invokeSharmaflix(
         title: String? = null,
-        year: Int? = null,
-        season: Int? = null,
-        episode: Int? = null,
-        subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
         val searchtitle=encodeQuery(title ?:"").replace("+", "%20")
@@ -2110,40 +2216,114 @@ object StreamPlayExtractor : StreamPlay() {
         }
     }
 
-    suspend fun invokeVidSrc(
-        id: Int? = null,
+//Kindly don't copy it
+    suspend fun invokeEmbedsu(
+        id: String? = null,
         season: Int? = null,
         episode: Int? = null,
         callback: (ExtractorLink) -> Unit
     ) {
-        val url = if (season == null) {
-            "$vidSrcAPI/embed/movie?tmdb=$id"
+    val url = if (season == null) {
+            "$EmbedSu/embed/movie/$id"
         } else {
-            "$vidSrcAPI/embed/tv?tmdb=$id&season=$season&episode=$episode"
+            "$EmbedSu/embed/tv/$id/$season/$episode"
+        }
+        Log.d("Phisher", url.toString())
+        val res = app.get(url, referer = EmbedSu).document.selectFirst("script:containsData(window.vConfig)")?.data()
+            .toString()
+        val jsonencoded =
+            Regex("JSON\\.parse\\(atob\\(`(.*?)`\\)\\);").find(res)?.groupValues?.getOrNull(1) ?: ""
+        val decodedjson = base64Decode(jsonencoded).toJson()
+        val gson = Gson()
+        val json = gson.fromJson(decodedjson, Embedsu::class.java)
+        val hash = json.hash
+        val decodedResult = simpleDecodeProcess(hash) ?:""
+        val items = EmbedSuitemparseJson(decodedResult)
+        items.map {
+            val sourceurl="${EmbedSu}/api/e/${it.hash}"
+            app.get(sourceurl,referer = EmbedSu).parsedSafe<Embedsuhref>()?.let { href->
+                Log.d("Phisher", href.toString())
+                val m3u8=href.source
+                val headers = mapOf(
+                    "Origin" to "https://embed.su",
+                    "Referer" to "https://embed.su/",
+                    "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+                )
+                callback.invoke(
+                    ExtractorLink(
+                        "Embedsu Viper",
+                        "Embedsu Viper",
+                        m3u8,
+                        EmbedSu,
+                        Qualities.P1080.value,
+                        ExtractorLinkType.M3U8,
+                        headers = headers
+                    )
+                )
+            }
+        }
+    }
+
+    suspend fun invokeTheyallsayflix(
+        id: String? = null,
+        season: Int? = null,
+        episode: Int? = null,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        val type=if (season==null) "movie" else "show"
+        val url = if (season == null) {
+            "$Theyallsayflix/api/v1/search?type=$type&imdb_id=$id"
+        } else {
+            "$Theyallsayflix/api/v1/search?type=$type&imdb_id=$id&season=$season&episode=$episode"
+        }
+        val test=app.get(url).parsed<Theyallsayflix>()
+        app.get(url).parsedSafe<Theyallsayflix>()?.streams?.amap {
+            Log.d("Phisher",it.toString() )
+            val href=it.playUrl
+            val quality=it.quality.toInt()
+            val name=it.fileName
+            val size=it.fileSize
+            callback.invoke(
+                ExtractorLink(
+                    "DebianFlix $name $size", "DebianFlix $name $size", href, "", quality, INFER_TYPE
+                )
+            )
         }
 
-        val iframedoc =
-            app.get(url).document.select("iframe#player_iframe").attr("src").let { httpsify(it) }
-        val doc = app.get(iframedoc, referer = url).document
+    }
 
-        val index = doc.select("body").attr("data-i")
-        val hash = doc.select("div#hidden").attr("data-h")
-        val srcrcp = deobfstr(hash, index)
 
-        val script = app.get(
-            httpsify(srcrcp),
-            referer = iframedoc
-        ).document.selectFirst("script:containsData(Playerjs)")?.data()
-        val video = script?.substringAfter("file:\"#9")?.substringBefore("\"")
-            ?.replace(Regex("/@#@\\S+?=?="), "")?.let { base64Decode(it) }
-
+// Thanks to Repo for code https://github.com/giammirove/videogatherer/blob/main/src/sources/vidsrc.cc.ts#L34
+    //Still in progress
+    suspend fun invokeVidsrccc(
+        id: Int? = null,
+        season: Int? = null,
+        episode: Int? = null,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        val url = if (season == null) {
+            "$vidsrctoAPI/v2/embed/movie/$id"
+        } else {
+            "$vidsrctoAPI/v2/embed/tv/$id/$season/$episode"
+        }
+        val type=if (season==null) "movie" else "tv"
+        val ID="VSC"
+        Log.d("Phisher",url)
+        val doc = app.get(url).document.toString()
+        val new_data_id= Regex("data-id=\"(.*?)\".*data-number=").find(doc)?.groupValues?.get(1).toString()
+        val v_value= Regex("var.v.=.\"(.*?)\"").find(doc)?.groupValues?.get(1).toString()
+        val vrf=vidsrctoDecrypt(id.toString())
+        Log.d("Phisher",vrf)
+        val api_url="${vidsrctoAPI}/api/episodes/${new_data_id}/servers?id=${id}&season=${season}&episode=${episode}&type=${type}&isMobile=false&v=${encodeURIComponent(v_value)}&vrf=${vrf}"
+        Log.d("Phisher",api_url)
         callback.invoke(
             ExtractorLink(
-                "Vidsrc", "Vidsrc", video
+                "Vidsrc", "Vidsrc", ""
                     ?: return, "https://vidsrc.stream/", Qualities.P1080.value, INFER_TYPE
             )
         )
-    }
+}
 /*
     suspend fun invokeHdmovies4u(
         title: String? = null,
@@ -2252,6 +2432,33 @@ object StreamPlayExtractor : StreamPlay() {
         }
 
     }
+
+    suspend fun invokeFlicky(
+        id: Int? = null,
+        season: Int? = null,
+        episode: Int? = null,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        val url = if (season == null) {
+            "$FlickyAPI/embed/movie/?id=$id"
+        } else {
+            "$FlickyAPI/embed/tv/?id=$id/${season}/${episode}"
+        }
+        val res= app.get(url, referer = FlickyAPI).toString().substringAfter("const streams = ").substringBefore(";")
+        val gson = Gson()
+        val listType = object : TypeToken<List<FlickyStream>>() {}.type
+        val streams: List<FlickyStream> = gson.fromJson(res, listType)
+        streams.map {
+            val href=it.link
+            val name=it.language
+            callback.invoke(
+                ExtractorLink(
+                    "Flicky $name", "Flicky $name", href, "", Qualities.P1080.value, INFER_TYPE
+                )
+            )
+        }
+    }
+
 
     suspend fun invokeM4uhd(
         title: String? = null,
@@ -3097,7 +3304,7 @@ object StreamPlayExtractor : StreamPlay() {
         episode: Int? = null,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit,
-        api: String = "https://parse.showflix.online"
+        api: String = "https://parse.showflix.shop"
     ) {
         val where = if (season == null) "movieName" else "seriesName"
         val classes = if (season == null) "movies" else "series"
@@ -3127,7 +3334,7 @@ object StreamPlayExtractor : StreamPlay() {
             listOf(
                 "https://streamwish.to/e/${result?.streamwish}",
                 "https://filelions.to/v/${result?.filelions}.html",
-                "https://streamruby.com/e/${result?.streamruby}.html",
+                "https://streamruby.com/${result?.streamruby}",
             )
         } else {
             val result = tryParseJson<ShowflixSearchSeries>(data)?.resultsSeries?.find {
@@ -3139,9 +3346,9 @@ object StreamPlayExtractor : StreamPlay() {
                 result?.streamruby?.get("Season $season")?.get(episode!!),
             )
         }
-
         iframes.apmap { iframe ->
-            loadExtractor(
+            loadSourceNameExtractor(
+                "Showflix ",
                 iframe ?: return@apmap,
                 "$showflixAPI/",
                 subtitleCallback,
@@ -3579,49 +3786,51 @@ object StreamPlayExtractor : StreamPlay() {
         val hrefpattern =
             Regex("""(?i)<a\s+href="([^"]*\b$searchtitle\b[^"]*)"""").find(res1)?.groupValues?.get(1)
                 ?: ""
-        val document = app.get(hrefpattern).document
-        if (season == null) {
-            document.select("h5 > a").amap {
-                val href = it.attr("href")
-                Log.d("Phisher M href", href)
-                val server = extractMdrive(href)
-                server.amap {
-                    Log.d("Phisher M server", it)
-                    loadExtractor(it, referer = "MoviesDrive", subtitleCallback, callback)
+        if (hrefpattern.isBlank()) {
+            val document = app.get(hrefpattern).document
+            if (season == null) {
+                document.select("h5 > a").amap {
+                    val href = it.attr("href")
+                    Log.d("Phisher M href", href)
+                    val server = extractMdrive(href)
+                    server.amap {
+                        Log.d("Phisher M server", it)
+                        loadExtractor(it, referer = "MoviesDrive", subtitleCallback, callback)
+                    }
                 }
-            }
-        } else {
-            val stag = "Season $season|S0$season"
-            val sep = "Ep0$episode|Ep$episode"
-            val entries = document.select("h5:matches((?i)$stag)")
-            Log.d("Phisher Moviedrive", entries.toString())
-            entries.amap { entry ->
-                val href = entry.nextElementSibling()?.selectFirst("a")?.attr("href") ?: ""
-                if (href.isNotBlank()) {
-                    val doc = app.get(href).document
-                    val fEp = doc.selectFirst("h5:matches((?i)$sep)")?.toString()
-                    if (fEp.isNullOrEmpty()) {
-                        val furl = doc.select("h5 a:contains(HubCloud)").attr("href")
-                        loadExtractor(furl, referer = "MoviesDrive", subtitleCallback, callback)
-                    } else
-                        doc.selectFirst("h5:matches((?i)$sep)")?.let { epElement ->
-                            val linklist = mutableListOf<String>()
-                            val firstHubCloudH5 = epElement.nextElementSibling()
-                            val secondHubCloudH5 = firstHubCloudH5?.nextElementSibling()
-                            val firstLink = secondHubCloudH5?.selectFirst("a")?.attr("href")
-                            val secondLink = secondHubCloudH5?.selectFirst("a")?.attr("href")
-                            if (firstLink != null) linklist.add(firstLink)
-                            if (secondLink != null) linklist.add(secondLink)
-                            Log.d("Phisher Moviedrive", linklist.toString())
-                            linklist.forEach { url ->
-                                loadExtractor(
-                                    url,
-                                    referer = "MoviesDrive",
-                                    subtitleCallback,
-                                    callback
-                                )
+            } else {
+                val stag = "Season $season|S0$season"
+                val sep = "Ep0$episode|Ep$episode"
+                val entries = document.select("h5:matches((?i)$stag)")
+                Log.d("Phisher Moviedrive", entries.toString())
+                entries.amap { entry ->
+                    val href = entry.nextElementSibling()?.selectFirst("a")?.attr("href") ?: ""
+                    if (href.isNotBlank()) {
+                        val doc = app.get(href).document
+                        val fEp = doc.selectFirst("h5:matches((?i)$sep)")?.toString()
+                        if (fEp.isNullOrEmpty()) {
+                            val furl = doc.select("h5 a:contains(HubCloud)").attr("href")
+                            loadExtractor(furl, referer = "MoviesDrive", subtitleCallback, callback)
+                        } else
+                            doc.selectFirst("h5:matches((?i)$sep)")?.let { epElement ->
+                                val linklist = mutableListOf<String>()
+                                val firstHubCloudH5 = epElement.nextElementSibling()
+                                val secondHubCloudH5 = firstHubCloudH5?.nextElementSibling()
+                                val firstLink = secondHubCloudH5?.selectFirst("a")?.attr("href")
+                                val secondLink = secondHubCloudH5?.selectFirst("a")?.attr("href")
+                                if (firstLink != null) linklist.add(firstLink)
+                                if (secondLink != null) linklist.add(secondLink)
+                                Log.d("Phisher Moviedrive", linklist.toString())
+                                linklist.forEach { url ->
+                                    loadExtractor(
+                                        url,
+                                        referer = "MoviesDrive",
+                                        subtitleCallback,
+                                        callback
+                                    )
+                                }
                             }
-                        }
+                    }
                 }
             }
         }
@@ -3942,9 +4151,8 @@ suspend fun invokeFlixAPI(
         } else {
             "$FlixAPI/tv/$tmdbId/$season/$episode"
         }
-    Log.d("Phisher", url.toString())
-    val source= app.get(url).parsedSafe<FlixAPI>()?.source
-    callback.invoke(
+        val source= app.get(url).parsedSafe<FlixAPI>()?.source
+        callback.invoke(
         ExtractorLink(
             "FlixAPI",
             "FlixAPI",
