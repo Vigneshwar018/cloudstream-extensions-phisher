@@ -25,8 +25,8 @@ class TamilYogiProvider : MainAPI() { // all providers must be an instance of Ma
 //    private var newMoiesPage = ""
 
     override val mainPage = mainPageOf(
-        "$mainUrl/tamil-movies-online/" to "New Movies",
-        "$mainUrl/tamil-hd-movies/" to "HD Movies",
+        "$mainUrl/tamil-movies-online-new/" to "New Movies",
+        "$mainUrl/tamil-hd-movies-new/" to "HD Movies",
         "$mainUrl/tamil-dubbed-movies-online/" to "Dubbed Movies",
         "$mainUrl/tamilyogi-tamil-web-series-new/" to "TV Series"
     )
