@@ -380,7 +380,7 @@ object StreamPlayExtractor : StreamPlay() {
                     !link.contains("youtube") -> {
                         loadExtractor(link, referer = apiUrl, subtitleCallback, callback)
                     }
-                    else -> ""
+                    else -> Log.d("Error","Not Found")
                 }
             }
         }
@@ -916,7 +916,7 @@ object StreamPlayExtractor : StreamPlay() {
         } else {
             "$azseriesAPI/episodes/$fixTitle-season-$season-episode-$episode"
         }
-        val res = app.get("$url", referer = azseriesAPI)
+        val res = app.get(url, referer = azseriesAPI)
             val document = res.document
             val id = document.selectFirst("#show_player_lazy")?.attr("movie-id").toString()
         val server_doc = app.post(
@@ -1228,9 +1228,9 @@ object StreamPlayExtractor : StreamPlay() {
             val query="""$api?variables={"search":{"types":["$type"],"year":$year,"season":"$season","query":"$name"},"limit":26,"page":1,"translationType":"sub","countryOrigin":"ALL"}&extensions={"persistedQuery":{"version":1,"sha256Hash":"$queryhash"}}"""
             val response= app.get(query, referer = privatereferer).parsedSafe<Anichi>()?.data?.shows?.edges
         if (response!=null) {
-            val id = response.apmap {
-                it.id
-            }.firstOrNull()
+            val id = response.firstOrNull {
+                it.name.contains("$name", ignoreCase = true) || it.englishName.contains("$name", ignoreCase = true)
+            }?.id
             val langType = listOf("sub", "dub")
             for (i in langType) {
                 val epData =
@@ -3580,10 +3580,10 @@ object StreamPlayExtractor : StreamPlay() {
         episode: Int? = null,
         callback: (ExtractorLink) -> Unit,
     ) {
-        //val doc = app.get("$allmovielandAPI/5499-love-lies-bleeding.html").toString()
-        //val domainRegex = Regex("const AwsIndStreamDomain.*'(.*)';")
-        //var host = domainRegex.find(doc)?.groups?.get(1)?.value
-        var host="https://keels313ale.com"
+        val doc = app.get("$allmovielandAPI/5499-love-lies-bleeding.html").toString()
+        val domainRegex = Regex("const AwsIndStreamDomain.*'(.*)';")
+        val host = domainRegex.find(doc)?.groups?.get(1)?.value ?:""
+        //val host="https://kioled326aps.com"
         val res = app.get(
             "$host/play/$imdbId",
             referer = "$allmovielandAPI/"
@@ -3786,7 +3786,7 @@ object StreamPlayExtractor : StreamPlay() {
         val hrefpattern =
             Regex("""(?i)<a\s+href="([^"]*\b$searchtitle\b[^"]*)"""").find(res1)?.groupValues?.get(1)
                 ?: ""
-        if (hrefpattern.isBlank()) {
+        if (hrefpattern.isNotEmpty()) {
             val document = app.get(hrefpattern).document
             if (season == null) {
                 document.select("h5 > a").amap {
