@@ -3,7 +3,7 @@
 import org.jetbrains.kotlin.konan.properties.Properties
 
 // use an integer for version numbers
-version = 103
+version = 104
 android {
     defaultConfig {
         val properties = Properties()
@@ -32,6 +32,7 @@ android {
         buildConfigField("String", "SharmaflixApi", "\"${properties.getProperty("SharmaflixApi")}\"")
         buildConfigField("String", "Theyallsayflix", "\"${properties.getProperty("Theyallsayflix")}\"")
         buildConfigField("String", "GojoAPI", "\"${properties.getProperty("GojoAPI")}\"")
+        buildConfigField("String", "HianimeAPI", "\"${properties.getProperty("HianimeAPI")}\"")
     }
 }
 
