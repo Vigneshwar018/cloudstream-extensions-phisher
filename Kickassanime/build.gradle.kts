@@ -1,13 +1,13 @@
 // use an integer for version numbers
-version = 130
+version = 10
 
 
 cloudstream {
-    language = "hi"
+    language = "en"
     // All of these properties are optional, you can safely remove them
 
-     description = "Includes: Hdmovie2,hdmovie22"
-     authors = listOf("Phisher98,hexated")
+    // description = "Lorem Ipsum"
+     authors = listOf("Hexated")
 
     /**
      * Status int as the following:
@@ -18,9 +18,10 @@ cloudstream {
      * */
     status = 1 // will be 3 if unspecified
     tvTypes = listOf(
-        "TvSeries",
-        "Movie",
+        "AnimeMovie",
+        "Anime",
+        "OVA",
     )
 
-    iconUrl = "https://www.google.com/s2/favicons?domain=movierulzhd.green&sz=%size%"
+    iconUrl = "https://www.google.com/s2/favicons?domain=www2.kickassanime.ro&sz=%size%"
 }
