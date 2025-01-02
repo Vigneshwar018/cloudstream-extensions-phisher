@@ -3,17 +3,155 @@ package com.Phisher98
 import com.fasterxml.jackson.annotation.JsonProperty
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+//Vidsrccc
 
-//FlixAPI
-
-data class FlixAPI(
-    val source: String,
-    val subtitles: List<FlixAPISubtitle>,
+data class Vidsrccc(
+    val id: String,
+    val vrf: String,
+    val timestamp: String,
 )
 
-data class FlixAPISubtitle(
-    val url: String,
-    val lang: String,
+data class Vidsrcccservers(
+    val data: List<VidsrcccDaum>,
+    val success: Boolean,
+)
+
+data class VidsrcccDaum(
+    val name: String,
+    val hash: String,
+)
+
+data class Vidsrcccm3u8(
+    val data: VidsrcccData,
+    val success: Boolean,
+)
+
+data class VidsrcccData(
+    val source: String,
+    val subtitles: List<VidsrcccSubtitle>,
+)
+
+data class VidsrcccSubtitle(
+    val kind: String,
+    val file: String,
+    val label: String,
+    val default: Boolean?,
+)
+
+
+//FlixHQAPI
+
+data class SerachFlix(
+    val items: List<Item>,
+    val pagination: Pagination,
+)
+
+data class Item(
+    val id: String,
+    val title: String,
+    val poster: String,
+    val stats: Stats,
+)
+
+data class Stats(
+    val year: String,
+    val duration: String,
+    val rating: String,
+)
+
+data class Pagination(
+    val current: Long,
+    val total: Long,
+)
+
+data class MoviedetailsResponse(
+    val title: String,
+    val description: String,
+    val type: String,
+    val stats: List<Stat>,
+    val related: List<Related>,
+    val episodeId: String,
+)
+
+data class Stat(
+    val name: String,
+    val value: Any?,
+)
+
+data class Related(
+    val id: String,
+    val title: String,
+    val poster: String,
+    val stats: MovieStats,
+)
+
+data class MovieStats(
+    val year: String?,
+    val duration: String?,
+    val rating: String,
+    val seasons: String?,
+)
+
+
+data class FlixServers(
+    val servers: List<Server>,
+)
+
+data class Server(
+    val id: String,
+    val name: String,
+)
+
+
+data class FlixHQsources(
+    val sources: List<FlixSource>,
+    val tracks: List<Track>,
+    val t: Long,
+    val server: Long,
+)
+
+data class FlixSource(
+    val file: String,
+    val type: String,
+)
+
+data class Track(
+    val file: String,
+    val label: String,
+    val kind: String,
+    val default: Boolean?,
+)
+
+
+data class Seasonresponse(
+    val seasons: List<Seasondata>,
+)
+
+data class Seasondata(
+    val id: String,
+    val number: Long,
+)
+
+
+data class Episoderesponse(
+    val episodes: List<Episodedata>,
+)
+
+data class Episodedata(
+    val id: String,
+    val number: Long,
+    val title: String,
+)
+
+
+//HinAuto
+
+typealias HinAuto = List<HinAutoRoot2>;
+
+data class HinAutoRoot2(
+    val file: String,
+    val label: String,
+    val type: String,
 )
 
 
@@ -230,9 +368,10 @@ data class Link(
 )
 
 //Flicky
+
 data class FlickyStream(
-    val link: String,
-    val language: String
+    val language: String,
+    val url: String,
 )
 
 //WyZIESUBAPI
@@ -473,6 +612,46 @@ data class CrunchyrollSourcesResponses(
         @JsonProperty("vo_adaptive_hls") val vo_adaptive_hls: HashMap<String, HashMap<String, String>>? = hashMapOf(),
     )
 }
+//Hianime
+
+
+data class Hianime(
+    val success: Boolean,
+    val data: HianimeData,
+)
+
+data class HianimeData(
+    val tracks: List<HianimeTrack>,
+    val intro: Intro,
+    val outro: Outro,
+    val sources: List<HianimeSource>,
+    @JsonProperty("anilistID")
+    val anilistId: Long,
+    @JsonProperty("malID")
+    val malId: Long,
+)
+
+data class HianimeTrack(
+    val file: String,
+    val label: String?,
+    val kind: String,
+    val default: Boolean?,
+)
+
+data class Intro(
+    val start: Long,
+    val end: Long,
+)
+
+data class Outro(
+    val start: Long,
+    val end: Long,
+)
+
+data class HianimeSource(
+    val url: String,
+    val type: String,
+)
 
 //anime animepahe parser
 

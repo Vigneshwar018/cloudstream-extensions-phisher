@@ -31,11 +31,11 @@ jobs:
       - name: Clean old builds
         run: rm $GITHUB_WORKSPACE/builds/*.cs3 || true
 
-      - name: Setup JDK 11
-        uses: actions/setup-java@v4
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4.6.0
         with:
           distribution: "adopt"
-          java-version: 11
+          java-version: 17
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2
@@ -60,8 +60,6 @@ jobs:
           SUPERSTREAM_THIRD_API: ${{ secrets.SUPERSTREAM_THIRD_API }}
           SUPERSTREAM_FOURTH_API: ${{ secrets.SUPERSTREAM_FOURTH_API }}
           MOVIE_API: ${{ secrets.MOVIE_API }}
-          MultiMovies_API: ${{ secrets.MultiMovies_API }}
-          MovieDrive_API: ${{ secrets.MovieDrive_API }}
           AsianDrama_API: ${{ secrets.AsianDrama_API }}
           FanCode_API: ${{ secrets.FanCode_API }}
           Whvx_API: ${{ secrets.Whvx_API }}
@@ -72,13 +70,15 @@ jobs:
           CatflixAPI: ${{ secrets.CatflixAPI }}
           TooniboyCookie: ${{ secrets.TooniboyCookie }}
           ConsumetAPI: ${{ secrets.ConsumetAPI }}
-          FlixAPI: ${{ secrets.FlixAPI }}
+          FlixHQAPI: ${{ secrets.FlixHQAPI }}
           WhvxAPI: ${{ secrets.WhvxAPI }}
           WhvxT: ${{ secrets.WhvxT }}
           SharmaflixApikey: ${{ secrets.SharmaflixApikey }}
           SharmaflixApi: ${{ secrets.SharmaflixApi }}
           Theyallsayflix: ${{ secrets.Theyallsayflix }}
           GojoAPI: ${{ secrets.GojoAPI }}
+          HianimeAPI: ${{ secrets.HianimeAPI }}
+          Vidsrccc: ${{ secrets.Vidsrccc }}
         run: |
           cd $GITHUB_WORKSPACE/src
           echo TMDB_API=$TMDB_API >> local.properties
@@ -99,8 +99,6 @@ jobs:
           echo SUPERSTREAM_THIRD_API=$SUPERSTREAM_THIRD_API >> local.properties
           echo SUPERSTREAM_FOURTH_API=$SUPERSTREAM_FOURTH_API >> local.properties
           echo MOVIE_API=$MOVIE_API >> local.properties
-          echo MultiMovies_API=$MultiMovies_API >> local.properties
-          echo MovieDrive_API=$MovieDrive_API >> local.properties
           echo AsianDrama_API=$AsianDrama_API >> local.properties
           echo FanCode_API=$FanCode_API >> local.properties
           echo Whvx_API=$Whvx_API >> local.properties
@@ -111,12 +109,14 @@ jobs:
           echo CatflixAPI=$CatflixAPI >> local.properties
           echo TooniboyCookie=$TooniboyCookie >> local.properties
           echo ConsumetAPI=$ConsumetAPI >> local.properties
-          echo FlixAPI=$FlixAPI >> local.properties
+          echo FlixHQAPI=$FlixHQAPI >> local.properties
           echo WhvxAPI=$WhvxAPI >> local.properties
           echo WhvxT=$WhvxT >> local.properties
           echo SharmaflixApi=$SharmaflixApi >> local.properties
           echo SharmaflixApikey=$SharmaflixApikey >> local.properties
           echo GojoAPI=$GojoAPI >> local.properties
+          echo HianimeAPI=$HianimeAPI >> local.properties
+          echo Vidsrccc=$Vidsrccc >> local.properties
       - name: Build Plugins
         run: |
           cd $GITHUB_WORKSPACE/src

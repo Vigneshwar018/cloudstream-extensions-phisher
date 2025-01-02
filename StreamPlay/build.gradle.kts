@@ -3,7 +3,7 @@
 import org.jetbrains.kotlin.konan.properties.Properties
 
 // use an integer for version numbers
-version = 103
+version = 111
 android {
     defaultConfig {
         val properties = Properties()
@@ -18,20 +18,19 @@ android {
         buildConfigField("String", "CRUNCHYROLL_BASIC_TOKEN", "\"${properties.getProperty("CRUNCHYROLL_BASIC_TOKEN")}\"")
         buildConfigField("String", "CRUNCHYROLL_REFRESH_TOKEN", "\"${properties.getProperty("CRUNCHYROLL_REFRESH_TOKEN")}\"")
         buildConfigField("String", "MOVIE_API", "\"${properties.getProperty("MOVIE_API")}\"")
-        buildConfigField("String", "MultiMovies_API", "\"${properties.getProperty("MultiMovies_API")}\"")
-        buildConfigField("String", "MovieDrive_API", "\"${properties.getProperty("MovieDrive_API")}\"")
-        buildConfigField("String", "AsianDrama_API", "\"${properties.getProperty("AsianDrama_API")}\"")
         buildConfigField("String", "ANICHI_API", "\"${properties.getProperty("ANICHI_API")}\"")
         buildConfigField("String", "Whvx_API", "\"${properties.getProperty("Whvx_API")}\"")
         buildConfigField("String", "CatflixAPI", "\"${properties.getProperty("CatflixAPI")}\"")
         buildConfigField("String", "ConsumetAPI", "\"${properties.getProperty("ConsumetAPI")}\"")
-        buildConfigField("String", "FlixAPI", "\"${properties.getProperty("FlixAPI")}\"")
+        buildConfigField("String", "FlixHQAPI", "\"${properties.getProperty("FlixHQAPI")}\"")
         buildConfigField("String", "WhvxAPI", "\"${properties.getProperty("WhvxAPI")}\"")
         buildConfigField("String", "WhvxT", "\"${properties.getProperty("WhvxT")}\"")
         buildConfigField("String", "SharmaflixApikey", "\"${properties.getProperty("SharmaflixApikey")}\"")
         buildConfigField("String", "SharmaflixApi", "\"${properties.getProperty("SharmaflixApi")}\"")
         buildConfigField("String", "Theyallsayflix", "\"${properties.getProperty("Theyallsayflix")}\"")
         buildConfigField("String", "GojoAPI", "\"${properties.getProperty("GojoAPI")}\"")
+        buildConfigField("String", "HianimeAPI", "\"${properties.getProperty("HianimeAPI")}\"")
+        buildConfigField("String", "Vidsrccc", "\"${properties.getProperty("Vidsrccc")}\"")
     }
 }
 
