@@ -1,71 +1,22 @@
-package com.Phisher98
+package com.Toonstream
 
-
-//import android.util.Log
-import android.annotation.SuppressLint
-import android.annotation.TargetApi
-import android.os.Build
-import android.util.Log
-import com.lagradost.cloudstream3.USER_AGENT
 import com.fasterxml.jackson.annotation.JsonProperty
+import com.lagradost.api.Log
 import com.lagradost.cloudstream3.ErrorLoadingException
 import com.lagradost.cloudstream3.SubtitleFile
+import com.lagradost.cloudstream3.USER_AGENT
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.base64Decode
-import com.lagradost.cloudstream3.extractors.StreamWishExtractor
-import com.lagradost.cloudstream3.extractors.Vidmoly
 import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.INFER_TYPE
 import com.lagradost.cloudstream3.utils.Qualities
-import com.lagradost.cloudstream3.utils.loadExtractor
-import com.lagradost.cloudstream3.extractors.helper.AesHelper.cryptoAESHandler
 import java.security.MessageDigest
 import java.util.Base64
 
-open class Streamruby : ExtractorApi() {
-    override var name = "Streamruby"
-    override var mainUrl = "streamruby.com"
-    override val requiresReferer = false
-    override suspend fun getUrl(url: String, referer: String?): List<ExtractorLink>? {
-        if (url.contains("/e/"))
-        {
-            val newurl=url.replace("/e","")
-            val txt = app.get(newurl).text
-            val m3u8 = Regex("file:\\s*\"(.*?m3u8.*?)\"").find(txt)?.groupValues?.getOrNull(1).toString()
-            return listOf(
-                ExtractorLink(
-                    this.name,
-                    this.name,
-                    m3u8,
-                    mainUrl,
-                    Qualities.Unknown.value,
-                    type = INFER_TYPE
-                )
-            )
-        }
-        else
-        {
-            val txt = app.get(url).text
-            val m3u8 = Regex("file:\\s*\"(.*?m3u8.*?)\"").find(txt)?.groupValues?.getOrNull(1).toString()
-            return listOf(
-                ExtractorLink(
-                    this.name,
-                    this.name,
-                    m3u8,
-                    mainUrl,
-                    Qualities.Unknown.value,
-                    type = INFER_TYPE
-                )
-            )
-        }
-    }
-}
-
-
-class VidStream : ExtractorApi() {
-    override val name = "Vidstreaming"
-    override val mainUrl = "https://vidstreamnew.xyz"
+open class Chillx : ExtractorApi() {
+    override val name = "Chillx"
+    override val mainUrl = "https://chillx.top"
     override val requiresReferer = true
     private var key: String? = null
 
@@ -86,10 +37,10 @@ class VidStream : ExtractorApi() {
         val byteList: List<Int> = decodedBytes.map { it.toInt() and 0xFF }
         val processedResult = decryptWithXor(byteList, key)
         val decoded= base64Decode(processedResult)
-        val m3u8 = Regex("\"?file\"?:\\s*\"([^\"]+)").find(decoded)?.groupValues?.get(1)
+        val m3u8 = Regex("sources:\\s*\\[\\s*\\{\\s*\"file\"\\s*:\\s*\"([^\"]+)").find(decoded)?.groupValues?.get(1)
             ?.trim()
             ?:""
-        com.lagradost.api.Log.d("Phisher","$decoded $m3u8")
+        Log.d("Phisher","$decoded $m3u8")
 
         val header =
             mapOf(
@@ -114,6 +65,17 @@ class VidStream : ExtractorApi() {
                 headers = header
             )
         )
+
+        val subtitles = extractSrtSubtitles(decoded)
+
+        subtitles.forEachIndexed { _, (language, url) ->
+            subtitleCallback.invoke(
+                SubtitleFile(
+                    language,
+                    url
+                )
+            )
+        }
     }
 
     private fun logSha256Checksum(input: String): List<Int> {
@@ -123,7 +85,6 @@ class VidStream : ExtractorApi() {
         return unsignedIntArray
     }
 
-    @TargetApi(Build.VERSION_CODES.O)
     private fun decodeBase64WithPadding(xIdJ2lG: String): ByteArray {
         // Ensure padding for Base64 encoding (if necessary)
         var paddedString = xIdJ2lG
@@ -133,6 +94,17 @@ class VidStream : ExtractorApi() {
 
         // Decode using standard Base64 (RFC4648)
         return Base64.getDecoder().decode(paddedString)
+    }
+
+    private fun extractSrtSubtitles(subtitle: String): List<Pair<String, String>> {
+        // Regex to match the language and associated .srt URL properly, and stop at the next [Language] section
+        val regex = """\[([^]]+)](https?://[^\s,]+\.srt)""".toRegex()
+
+        // Process each match and return language-URL pairs
+        return regex.findAll(subtitle).map { match ->
+            val (language, url) = match.destructured
+            language.trim() to url.trim()
+        }.toList()
     }
 
     private fun decryptWithXor(byteList: List<Int>, xorKey: List<Int>): String {
@@ -156,32 +128,3 @@ class VidStream : ExtractorApi() {
     data class Keys(
         @JsonProperty("chillx") val key: List<String>)
 }
-
-
-class Vidmolynet : Vidmoly() {
-    override val mainUrl = "https://vidmoly.net"
-}
-
-class Cdnwish : StreamWishExtractor() {
-    override var name = "Streamwish"
-    override var mainUrl = "https://cdnwish.com"
-}
-
-open class GDMirrorbot : ExtractorApi() {
-    override var name = "GDMirrorbot"
-    override var mainUrl = "https://gdmirrorbot.nl"
-    override val requiresReferer = false
-    override suspend fun getUrl(
-        url: String,
-        referer: String?,
-        subtitleCallback: (SubtitleFile) -> Unit,
-        callback: (ExtractorLink) -> Unit) {
-        app.get(url).document.select("ul#videoLinks li").map {
-            val link=it.attr("data-link")
-            loadExtractor(link,subtitleCallback, callback)
-        }
-    }
-}
-
-
-data class Media(val url: String, val poster: String? = null, val mediaType: Int? = null)

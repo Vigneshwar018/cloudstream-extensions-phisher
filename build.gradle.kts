@@ -1,18 +1,19 @@
-import com.lagradost.cloudstream3.gradle.CloudstreamExtension 
+import com.lagradost.cloudstream3.gradle.CloudstreamExtension
 import com.android.build.gradle.BaseExtension
 
 buildscript {
     repositories {
         google()
         mavenCentral()
+        // Shitpack repo which contains our tools and dependencies
         maven("https://jitpack.io")
     }
 
     dependencies {
-        classpath("com.android.tools.build:gradle:7.0.4")
+        classpath("com.android.tools.build:gradle:7.4.0")
         // Cloudstream gradle plugin which makes everything work and builds plugins
         classpath("com.github.recloudstream:gradle:-SNAPSHOT")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.23")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.0")
     }
 }
 
@@ -25,6 +26,7 @@ allprojects {
 }
 
 fun Project.cloudstream(configuration: CloudstreamExtension.() -> Unit) = extensions.getByName<CloudstreamExtension>("cloudstream").configuration()
+
 fun Project.android(configuration: BaseExtension.() -> Unit) = extensions.getByName<BaseExtension>("android").configuration()
 
 subprojects {
@@ -33,21 +35,20 @@ subprojects {
     apply(plugin = "com.lagradost.cloudstream3.gradle")
 
     cloudstream {
-        // compatible with other git hosting services, like gitlab, gitDab, codeBerg
-        setRepo(System.getenv("GITHUB_REPOSITORY") ?: "https://github.com/phisher98/Phisher98")
+        // when running through github workflow, GITHUB_REPOSITORY should contain current repository name
+        setRepo(System.getenv("GITHUB_REPOSITORY") ?: "https://github.com/phisher98/cloudstream-extensions-phisher")
+
+        authors = listOf("Phisher98")
     }
 
     android {
-
         defaultConfig {
-            minSdk = 21
+            minSdk = 26
             compileSdkVersion(33)
-            //noinspection OldTargetApi
             targetSdk = 33
         }
 
         compileOptions {
-            isCoreLibraryDesugaringEnabled = true
             sourceCompatibility = JavaVersion.VERSION_1_8
             targetCompatibility = JavaVersion.VERSION_1_8
         }
@@ -69,14 +70,16 @@ subprojects {
         val implementation by configurations
 
         // Stubs for all Cloudstream classes
-        //noinspection GradleDeprecatedConfiguration
         apk("com.lagradost:cloudstream3:pre-release")
-        implementation(kotlin("stdlib")) // adds standard kotlin features, like listOf, mapOf etc
-        implementation("com.github.Blatzar:NiceHttp:0.4.11") // http library
-        implementation("org.jsoup:jsoup:1.18.1") // html parser
-        implementation("com.android.tools:desugar_jdk_libs:2.1.3")
-        //noinspection GradleDependency
-        implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.16.1")
+
+        // these dependencies can include any of those which are added by the app,
+        // but you dont need to include any of them if you dont need them
+        // https://github.com/recloudstream/cloudstream/blob/master/app/build.gradle
+        implementation(kotlin("stdlib"))
+        implementation("com.github.Blatzar:NiceHttp:0.4.11")
+        implementation("org.jsoup:jsoup:1.18.1")
+        implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.16.0")
+        implementation("com.fasterxml.jackson.core:jackson-databind:2.16.0")
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
         implementation("com.faendir.rhino:rhino-android:1.6.0")
         implementation("me.xdrop:fuzzywuzzy:1.4.0")

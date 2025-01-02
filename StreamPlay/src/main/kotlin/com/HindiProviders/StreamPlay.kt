@@ -53,12 +53,13 @@ import com.Phisher98.StreamPlayExtractor.invokeZshow
 import com.Phisher98.StreamPlayExtractor.invokePlaydesi
 import com.Phisher98.StreamPlayExtractor.invokeBollyflix
 import com.Phisher98.StreamPlayExtractor.invokeBollyflixvip
-import com.Phisher98.StreamPlayExtractor.invokeBroflixVidlink
 import com.Phisher98.StreamPlayExtractor.invokeDramaCool
 import com.Phisher98.StreamPlayExtractor.invokeEmbedsu
 import com.Phisher98.StreamPlayExtractor.invokeExtramovies
 import com.Phisher98.StreamPlayExtractor.invokeFlicky
-import com.Phisher98.StreamPlayExtractor.invokeFlixAPI
+import com.Phisher98.StreamPlayExtractor.invokeFlixAPIHQ
+import com.Phisher98.StreamPlayExtractor.invokeHinAuto
+import com.Phisher98.StreamPlayExtractor.invokeRogmovies
 import com.Phisher98.StreamPlayExtractor.invokeVidbinge
 import com.Phisher98.StreamPlayExtractor.invokemovies4u
 import com.Phisher98.StreamPlayExtractor.invokeSharmaflix
@@ -173,17 +174,18 @@ open class StreamPlay : TmdbProvider() {
         const val hdmovies4uAPI = "https://hdmovies4u.boston"
         const val vegaMoviesAPI = "https://vegamovies.st"
         const val dotmoviesAPI = "https://luxmovies.live"
+        const val rogmoviesAPI = "https://rogmovies.com"
         const val tvMoviesAPI = "https://www.tvseriesnmovies.com"
         const val dahmerMoviesAPI="https://a.datadiff.us.kg"
         const val MovieDrive_API="https://moviesdrive.cloud"
-        const val Asiandrama_API=BuildConfig.AsianDrama_API
+        const val Asiandrama_API="https://asiandrama.fun"
         const val bollyflixAPI = "https://bollyflix.ninja"
         const val movies4u = "https://movies4u.gb.net"
         const val animepaheAPI = "https://animepahe.ru"
         const val Catflix= "https://catflix.su"
         const val ConsumetAPI=BuildConfig.ConsumetAPI
         const val BollyflixVIP= "https://bollyflix.meme"
-        const val FlixAPI= BuildConfig.FlixAPI
+        const val FlixAPI= BuildConfig.FlixHQAPI
         const val NyaaAPI="https://nyaa.land"
         const val Extramovies="https://extramovies.soy"
         const val WhvxAPI=BuildConfig.WhvxAPI
@@ -191,10 +193,11 @@ open class StreamPlay : TmdbProvider() {
         const val SubtitlesAPI="https://opensubtitles-v3.strem.io"
         const val BroflixVidlink="https://bombthe.irish"
         const val EmbedSu="https://embed.su"
-        const val FlickyAPI="https://www.flicky.host"
+        const val FlickyAPI="https://player.flicky.host"
         const val WyZIESUBAPI="https://sub.wyzie.ru"
         const val Theyallsayflix=BuildConfig.Theyallsayflix
         const val TomAPI="https://tom.autoembed.cc"
+        const val HinAutoAPI="https://hin.autoembed.cc"
         fun getType(t: String?): TvType {
             return when (t) {
                 "movie" -> TvType.Movie
@@ -336,6 +339,7 @@ open class StreamPlay : TmdbProvider() {
                                 data.type,
                                 eps.seasonNumber,
                                 eps.episodeNumber,
+                                eps.id,
                                 title = title,
                                 year = season.airDate?.split("-")?.first()?.toIntOrNull(),
                                 orgTitle = orgTitle,
@@ -779,6 +783,8 @@ open class StreamPlay : TmdbProvider() {
     },
     {
        if (!res.isAnime) invokecatflix(
+           res.id,
+           res.epid,
            res.title,
            res.episode,
            res.season,
@@ -829,11 +835,13 @@ open class StreamPlay : TmdbProvider() {
     },
             {
 
+                /*
                 if (!res.isAnime) invokeBroflixVidlink(
                     res.id,
                     subtitleCallback,
                     callback
                 )
+                 */
             },
     {
         invokeSharmaflix(
@@ -853,6 +861,18 @@ open class StreamPlay : TmdbProvider() {
             callback
         )
     },
+            {
+                if (!res.isAnime) invokeRogmovies(
+                    res.imdbId,
+                    res.title,
+                    res.year,
+                    res.season,
+                    res.lastSeason,
+                    res.episode,
+                    subtitleCallback,
+                    callback
+                )
+            },
     {
         invokeMultimovies(
             multimoviesAPI,
@@ -1005,11 +1025,21 @@ open class StreamPlay : TmdbProvider() {
       )
 },
 {
-    if (!res.isAnime) invokeFlixAPI(
-        res.tvdbId,
+    if (!res.isAnime) invokeFlixAPIHQ(
+        res.title,
+        res.year,
         res.season,
         res.episode,
         subtitleCallback,
+        callback
+    )
+},
+{
+    if (!res.isAnime) invokeHinAuto(
+        res.id,
+        res.year,
+        res.season,
+        res.episode,
         callback
     )
 },
@@ -1044,6 +1074,7 @@ val tvdbId: Int? = null,
 val type: String? = null,
 val season: Int? = null,
 val episode: Int? = null,
+val epid: Int? = null,
 val aniId: String? = null,
 val animeId: String? = null,
 val title: String? = null,
