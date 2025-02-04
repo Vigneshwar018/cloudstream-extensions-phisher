@@ -6,32 +6,32 @@ import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.APIHolder.unixTime
 import com.lagradost.cloudstream3.LoadResponse.Companion.addAniListId
 import com.lagradost.cloudstream3.LoadResponse.Companion.addMalId
-import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
 import com.lagradost.cloudstream3.mvvm.suspendSafeApiCall
 import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import org.jsoup.Jsoup
-import kotlin.math.pow
+import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 
-class AnimePaheProvider : MainAPI() {
+class AnimePahe : MainAPI() {
     companion object {
         const val MAIN_URL = "https://animepahe.ru"
         val headers = mapOf("Cookie" to "__ddg2_=1234567890")
-        var cookies: Map<String, String> = mapOf()
+        //var cookies: Map<String, String> = mapOf()
         private fun getType(t: String): TvType {
             return if (t.contains("OVA") || t.contains("Special")) TvType.OVA
             else if (t.contains("Movie")) TvType.AnimeMovie
             else TvType.Anime
         }
 
-        val YTSM = Regex("ysmm = '([^']+)")
+        //val YTSM = Regex("ysmm = '([^']+)")
 
-        val KWIK_PARAMS_RE = Regex("""\("(\w+)",\d+,"(\w+)",(\d+),(\d+),\d+\)""")
-        val KWIK_D_URL = Regex("action=\"([^\"]+)\"")
-        val KWIK_D_TOKEN = Regex("value=\"([^\"]+)\"")
-        val YOUTUBE_VIDEO_LINK =
-            Regex("""(^(?:https?:)?(?://)?(?:www\.)?(?:youtu\.be/|youtube(?:-nocookie)?\.(?:[A-Za-z]{2,4}|[A-Za-z]{2,3}\.[A-Za-z]{2})/)(?:watch|embed/|vi?/)*(?:\?[\w=&]*vi?=)?[^#&?/]{11}.*${'$'})""")
+        //val KWIK_PARAMS_RE = Regex("""\("(\w+)",\d+,"(\w+)",(\d+),(\d+),\d+\)""")
+        //val KWIK_D_URL = Regex("action=\"([^\"]+)\"")
+        //val KWIK_D_TOKEN = Regex("value=\"([^\"]+)\"")
+        //val YOUTUBE_VIDEO_LINK = Regex("""(^(?:https?:)?(?://)?(?:www\.)?(?:youtu\.be/|youtube(?:-nocookie)?\.(?:[A-Za-z]{2,4}|[A-Za-z]{2,3}\.[A-Za-z]{2})/)(?:watch|embed/|vi?/)*(?:\?[\w=&]*vi?=)?[^#&?/]{11}.*${'$'})""")
     }
 
     override var mainUrl = MAIN_URL
@@ -164,25 +164,27 @@ class AnimePaheProvider : MainAPI() {
         }
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     private suspend fun generateListOfEpisodes(session: String): ArrayList<Episode> {
+        val episodes = ArrayList<Episode>()
+        val semaphore = Semaphore(5) // Limit to 5 concurrent requests (adjust based on server capability)
+
         try {
             val uri = "$mainUrl/api?m=release&id=$session&sort=episode_asc&page=1"
             val req = app.get(uri, headers = headers).text
             val data = parseJson<AnimePaheAnimeData>(req)
+
             val lastPage = data.lastPage
             val perPage = data.perPage
             val total = data.total
-            var ep = 1
-            val episodes = ArrayList<Episode>()
+            var currentEpisode = 1
 
-            fun getEpisodeTitle(k: AnimeData): String {
-                return k.title.ifEmpty {
-                    "Episode ${k.episode}"
-                }
+            fun getEpisodeTitle(episodeData: AnimeData): String {
+                return episodeData.title.ifEmpty { "Episode ${episodeData.episode}" }
             }
-
+            // If only one page, process all episodes in that page
             if (lastPage == 1 && perPage > total) {
-                data.data.forEach {
+                data.data.forEach { episodeData ->
                     episodes.add(
                         newEpisode(
                             LinkLoadData(
@@ -191,42 +193,57 @@ class AnimePaheProvider : MainAPI() {
                                 0,
                                 0,
                                 session,
-                                it.session
+                                episodeData.session
                             ).toJson()
                         ) {
-                            addDate(it.createdAt)
-                            this.name = getEpisodeTitle(it)
-                            this.posterUrl = it.snapshot
+                            addDate(episodeData.createdAt)
+                            this.name = getEpisodeTitle(episodeData)
+                            this.posterUrl = episodeData.snapshot
                         }
                     )
                 }
             } else {
-                for (page in 0 until lastPage) {
-                    for (i in 0 until perPage) {
-                        if (ep <= total) {
-                            episodes.add(
-                                Episode(
-                                    LinkLoadData(
-                                        mainUrl,
-                                        false,
-                                        ep,
-                                        page + 1,
-                                        session,
-                                        ""
-                                    ).toJson()
-                                )
-                            )
-                            ++ep
+                // Fetch multiple pages concurrently with limited threads
+                val deferredResults = (1..lastPage).map { page ->
+                    GlobalScope.async {
+                        semaphore.withPermit {
+                            try {
+                                val pageUri = "$mainUrl/api?m=release&id=$session&sort=episode_asc&page=$page"
+                                val pageReq = app.get(pageUri, headers = headers).text
+                                val pageData = parseJson<AnimePaheAnimeData>(pageReq)
+                                pageData.data.map { episodeData ->
+                                    newEpisode(
+                                        LinkLoadData(
+                                            mainUrl,
+                                            true,
+                                            currentEpisode++,
+                                            page,
+                                            session,
+                                            episodeData.session
+                                        ).toJson()
+                                    ) {
+                                        addDate(episodeData.createdAt)
+                                        this.name = getEpisodeTitle(episodeData)
+                                        this.posterUrl = episodeData.snapshot
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                Log.e("generateListOfEpisodes", "Error on page $page: ${e.message}")
+                                emptyList<Episode>()
+                            }
                         }
                     }
                 }
-            }
-            return episodes
-        } catch (e: Exception) {
-            return ArrayList()
-        }
-    }
 
+                // Wait for all pages to load and combine results
+                episodes.addAll(deferredResults.awaitAll().flatten())
+            }
+
+        } catch (e: Exception) {
+            Log.e("generateListOfEpisodes", "Error generating episodes: ${e.message}")
+        }
+        return episodes
+    }
     /**
      * Required to make bookmarks work with a session system
      **/
@@ -252,12 +269,13 @@ class AnimePaheProvider : MainAPI() {
 
             val tvType = doc.selectFirst("""a[href*="/anime/type/"]""")?.text()
 
+            /*
             val trailer: String? = if (html.contains("https://www.youtube.com/watch")) {
                 YOUTUBE_VIDEO_LINK.find(html)?.destructured?.component1()
             } else {
                 null
             }
-
+             */
             val episodes = generateListOfEpisodes(session)
             val year = Regex("""<strong>Aired:</strong>[^,]*, (\d+)""")
                 .find(html)?.destructured?.component1()
@@ -294,23 +312,18 @@ class AnimePaheProvider : MainAPI() {
                 this.showStatus = status
                 plot = synopsis
                 tags = if (!doc.select(".anime-genre > ul a").isEmpty()) {
-                    ArrayList(doc.select(".anime-genre > ul a").map { it.text().toString() })
+                    ArrayList(doc.select(".anime-genre > ul a").map { it.text() })
                 } else {
                     null
                 }
 
                 addMalId(malId)
                 addAniListId(anilistId)
-                addTrailer(trailer)
             }
         }
     }
 
-
-    private fun isNumber(s: String?): Boolean {
-        return s?.toIntOrNull() != null
-    }
-
+    /*
     private fun cookieStrToMap(cookie: String): Map<String, String> {
         val cookies = mutableMapOf<String, String>()
         for (string in cookie.split("; ")) {
@@ -325,6 +338,7 @@ class AnimePaheProvider : MainAPI() {
         }
         return cookies.toMap()
     }
+
 
     private fun getString(content: String, s1: Int, s2: Int): String {
         val characterMap = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+/"
@@ -425,10 +439,10 @@ class AnimePaheProvider : MainAPI() {
         @JsonProperty("kwik") val kwik: String?,
         @JsonProperty("kwik_pahewin") val kwikPahewin: String
     )
-
     private data class AnimePaheEpisodeLoadLinks(
         @JsonProperty("data") val data: List<Map<String, VideoQuality>>
     )
+
 
     private suspend fun getStreamUrlFromKwik(url: String?): String? {
         if (url == null) return null
@@ -441,7 +455,6 @@ class AnimePaheProvider : MainAPI() {
         val unpacked = getAndUnpack(response)
         return Regex("source=\'(.*?)\'").find(unpacked)?.groupValues?.get(1)
     }
-
 
     private suspend fun extractVideoLinks(
         data: String,
@@ -469,6 +482,7 @@ class AnimePaheProvider : MainAPI() {
         }
     }
 
+ */
     override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
@@ -480,16 +494,15 @@ class AnimePaheProvider : MainAPI() {
         val document= app.get(episodeUrl, headers= headers).document
         document.select("div.dropup button")
             .map {
-                var lang=""
+                val lang: String
                 val dub=it.select("span").text()
                 if (dub.contains("eng")) lang="DUB" else lang="SUB"
                 val quality = it.attr("data-resolution")
                 val href = it.attr("data-src")
-                    Log.d("Phisher", "$lang $quality $href")
                         loadSourceNameExtractor(
                             "Animepahe [$lang]",
                             href,
-                            mainUrl,
+                            quality,
                             subtitleCallback,
                             callback,
                             quality

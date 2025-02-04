@@ -1,4 +1,4 @@
-version = 31
+version = 37
 
 cloudstream {
     language = "hi"
@@ -13,7 +13,7 @@ cloudstream {
      * */
     status = 1 // will be 3 if unspecified
     tvTypes = listOf(
-        "Movie",
+        "AnimeMovie",
         "Anime",
         "Cartoon"
     )

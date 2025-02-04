@@ -2,12 +2,12 @@
 
 import org.jetbrains.kotlin.konan.properties.Properties
 
-// use an integer for version numbers
-version = 111
+version = 139
 android {
     defaultConfig {
         val properties = Properties()
         properties.load(project.rootProject.file("local.properties").inputStream())
+        android.buildFeatures.buildConfig=true
         buildConfigField("String", "TMDB_API", "\"${properties.getProperty("TMDB_API")}\"")
         buildConfigField("String", "GHOSTX_API", "\"${properties.getProperty("GHOSTX_API")}\"")
         buildConfigField("String", "CINEMATV_API", "\"${properties.getProperty("CINEMATV_API")}\"")
@@ -31,6 +31,8 @@ android {
         buildConfigField("String", "GojoAPI", "\"${properties.getProperty("GojoAPI")}\"")
         buildConfigField("String", "HianimeAPI", "\"${properties.getProperty("HianimeAPI")}\"")
         buildConfigField("String", "Vidsrccc", "\"${properties.getProperty("Vidsrccc")}\"")
+        buildConfigField("String", "WASMAPI", "\"${properties.getProperty("WASMAPI")}\"")
+
     }
 }
 
@@ -54,6 +56,7 @@ cloudstream {
         "TvSeries",
         "Anime",
         "Movie",
+        "Cartoon"
     )
 
     iconUrl = "https://i3.wp.com/yt3.googleusercontent.com/ytc/AIdro_nCBArSmvOc6o-k2hTYpLtQMPrKqGtAw_nC20rxm70akA=s900-c-k-c0x00ffffff-no-rj?ssl=1"

@@ -18,12 +18,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
         with:
           path: "src"
 
       - name: Checkout builds
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
         with:
           ref: "builds"
           path: "builds"
@@ -38,7 +38,7 @@ jobs:
           java-version: 17
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v2
+        uses: android-actions/setup-android@v3.2.2
 
       - name: Access Secrets
         env:
@@ -79,6 +79,7 @@ jobs:
           GojoAPI: ${{ secrets.GojoAPI }}
           HianimeAPI: ${{ secrets.HianimeAPI }}
           Vidsrccc: ${{ secrets.Vidsrccc }}
+          WASMAPI: ${{ secrets.WASMAPI }}
         run: |
           cd $GITHUB_WORKSPACE/src
           echo TMDB_API=$TMDB_API >> local.properties
@@ -117,6 +118,8 @@ jobs:
           echo GojoAPI=$GojoAPI >> local.properties
           echo HianimeAPI=$HianimeAPI >> local.properties
           echo Vidsrccc=$Vidsrccc >> local.properties
+          echo WASMAPI=$WASMAPI >> local.properties
+
       - name: Build Plugins
         run: |
           cd $GITHUB_WORKSPACE/src

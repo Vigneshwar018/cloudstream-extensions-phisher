@@ -8,6 +8,7 @@ import com.lagradost.cloudstream3.argamap
 import com.lagradost.cloudstream3.extractors.FileMoonSx
 import com.lagradost.cloudstream3.extractors.Filesim
 import com.lagradost.cloudstream3.extractors.MixDrop
+import com.lagradost.cloudstream3.extractors.StreamWishExtractor
 import com.lagradost.cloudstream3.extractors.helper.GogoHelper
 import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
@@ -33,6 +34,15 @@ class bulbasaur : Filesim() {
 class asianbxkiun : Embasic() {
     override var mainUrl = "https://asianbxkiun.pro"
     override val requiresReferer = false
+}
+
+class AsianLoadInfo : StreamWishExtractor() {
+    override var mainUrl = "https://asianload.info"
+    override val name = "AsianHD"
+
+    override fun getExtractorUrl(id: String): String {
+        return "$mainUrl/watch?v=$id"
+    }
 }
 
 open class Embasic : ExtractorApi() {
