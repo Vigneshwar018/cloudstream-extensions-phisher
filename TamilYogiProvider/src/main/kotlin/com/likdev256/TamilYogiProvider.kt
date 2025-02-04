@@ -28,7 +28,7 @@ class TamilYogiProvider : MainAPI() { // all providers must be an instance of Ma
         "$mainUrl/tamil-movies-online/" to "New Movies",
         "$mainUrl/tamil-hd-movies/" to "HD Movies",
         "$mainUrl/tamil-dubbed-movies-online-new/" to "Dubbed Movies",
-        "$mainUrl/ttamilyogi-tamil-web-series-tamilmv/" to "TV Series"
+        "$mainUrl/tamilyogi-tamil-web-series-tamilmv/" to "TV Series"
     )
 
     override suspend fun getMainPage(
