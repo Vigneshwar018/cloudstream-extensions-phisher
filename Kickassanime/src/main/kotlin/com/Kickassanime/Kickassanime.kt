@@ -1,6 +1,5 @@
 package com.kickassanime
 
-import android.util.Base64
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.google.gson.Gson
 import com.kickassanime.CryptoAES.decodeHex
@@ -130,9 +129,7 @@ val json = """
         val poster = getBannerUrl( loadjson?.banner?.hq) ?: getImageUrl(loadjson?.poster?.hq)
         val description= loadjson?.synopsis
         val tags= loadjson?.genres?.map { it }
-        Log.d("Phisher",loadjson?.status ?: "")
         val status=getStatus(loadjson?.status ?: "")
-        Log.d("Phisher",status.toString())
         val json=app.get("$mainUrl/api/show$showname/episodes?ep=1&lang=ja-JP").toString()
         val episodes = mutableListOf<Episode>()
         val jsonresponse = parseJsonToEpisodes(json)
@@ -141,7 +138,14 @@ val json = """
             val ep=it.episode_number.toString().substringBefore(".").toIntOrNull()
             val href="$mainUrl/api/show$showname/episode/ep-$ep-${it.slug}"
             val epposter= getThumbnailUrl(it.thumbnail.hq)
-            episodes.add(Episode(href, name, episode = ep, posterUrl = epposter))
+            episodes.add(
+                newEpisode(href)
+                {
+                    this.name=name
+                    this.episode=ep
+                    this.posterUrl=epposter
+                }
+            )
         }
 
         return newTvSeriesLoadResponse(title, url, TvType.Anime, episodes) {
@@ -428,7 +432,7 @@ data class Subtitle(
 private fun generateFilterWithCurrentYear(): String {
     val currentYear = Calendar.getInstance().get(Calendar.YEAR)
     val jsonObject = """{"year":$currentYear,"status":"airing"}"""
-    val base64Encoded = Base64.encodeToString(jsonObject.toByteArray(), Base64.DEFAULT).trim()
+    val base64Encoded = base64Encode(jsonObject.toByteArray()).trim()
     return URLEncoder.encode(base64Encoded, "UTF-8")
 }
 

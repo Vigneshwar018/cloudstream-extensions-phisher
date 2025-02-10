@@ -1,7 +1,6 @@
 package com.Donghuastream
 
-//import android.util.Log
-import android.annotation.SuppressLint
+
 import com.lagradost.api.Log
 import org.jsoup.nodes.Element
 import com.lagradost.cloudstream3.*
@@ -66,7 +65,6 @@ class Donghuastream : MainAPI() {
         return searchResponse
     }
 
-    @SuppressLint("SuspiciousIndentation")
     override suspend fun load(url: String): LoadResponse {
         val document = app.get(url).document
         val title       = document.selectFirst("h1.entry-title")?.text()?.trim().toString()
@@ -78,11 +76,15 @@ class Donghuastream : MainAPI() {
         return if (tvtag == TvType.TvSeries) {
             val Eppage= document.selectFirst(".eplister li > a")?.attr("href") ?:""
             val doc= app.get(Eppage).document
-            @Suppress("NAME_SHADOWING") val episodes=doc.select("div.episodelist > ul > li").map { info->
-                        val href = info.select("a").attr("href")
+            val episodes=doc.select("div.episodelist > ul > li").map { info->
+                        val href1 = info.select("a").attr("href")
                         val episode = info.select("a span").text().substringAfter("-").substringBeforeLast("-")
-                        val poster=info.selectFirst("a img")?.attr("data-src") ?:""
-                        Episode(href, episode, posterUrl = poster)
+                        val posterr=info.selectFirst("a img")?.attr("data-src") ?:""
+                        newEpisode(href1)
+                        {
+                            this.name=episode
+                            this.posterUrl=posterr
+                        }
             }
             if (poster.isEmpty())
             {

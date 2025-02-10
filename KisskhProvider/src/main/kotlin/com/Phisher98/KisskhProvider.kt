@@ -1,7 +1,6 @@
-package com.hexated
+package com.Phisher98
 
 import com.fasterxml.jackson.annotation.JsonProperty
-import com.lagradost.api.Log
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.mvvm.safeApiCall
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
@@ -92,10 +91,10 @@ class KisskhProvider : MainAPI() {
             ?: throw ErrorLoadingException("Invalid Json reponse")
 
         val episodes = res.episodes?.map { eps ->
-            Episode(
-                data = Data(res.title, eps.number, res.id, eps.id).toJson(),
-                episode = eps.number
-            )
+            newEpisode(Data(res.title, eps.number, res.id, eps.id).toJson())
+            {
+                this.episode=eps.number
+            }
         } ?: throw ErrorLoadingException("No Episode")
 
         return newTvSeriesLoadResponse(
@@ -130,12 +129,12 @@ class KisskhProvider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-
+        val KisskhAPI = BuildConfig.KissKh
+        val KisskhSub = BuildConfig.KisskhSub
         val loadData = parseJson<Data>(data)
-        val test=getKeygen(98951)
-        Log.d("Phisher",test)
+        val kkey = app.get("$KisskhAPI${loadData.epsId}&version=2.8.10", timeout = 10000).parsedSafe<Key>()?.key ?:""
         app.get(
-            "$mainUrl/api/DramaList/Episode/${loadData.epsId}.png?err=false&ts=&time=&kkey=$test",
+            "$mainUrl/api/DramaList/Episode/${loadData.epsId}.png?err=false&ts=&time=&kkey=$kkey",
             referer = "$mainUrl/Drama/${getTitle("${loadData.title}")}/Episode-${loadData.eps}?id=${loadData.id}&ep=${loadData.epsId}&page=0&pageSize=100"
         ).parsedSafe<Sources>()?.let { source ->
             listOf(source.video, source.thirdParty).apmap { link ->
@@ -171,10 +170,10 @@ class KisskhProvider : MainAPI() {
             }
         }
 
-        // parsedSafe doesn't work in <List<Object>>
-        app.get("$mainUrl/api/Sub/${loadData.epsId}").text.let { res ->
+        val kkey1=app.get("$KisskhSub${loadData.epsId}&version=2.8.10", timeout = 10000).parsedSafe<Key>()?.key ?:""
+        app.get("$mainUrl/api/Sub/${loadData.epsId}?kkey=$kkey1").text.let { res ->
             tryParseJson<List<Subtitle>>(res)?.map { sub ->
-                if (sub.src!!.endsWith("txt")) {
+                if (sub.src!!.contains(".txt")) {
                     subtitleCallback.invoke(
                         SubtitleFile(
                             getLanguage(sub.label ?: return@map),
@@ -205,7 +204,7 @@ class KisskhProvider : MainAPI() {
                     .newBuilder()
                     .build()
                 val response = chain.proceed(request)
-                if (response.request.url.toString().endsWith(".txt")) {
+                if (response.request.url.toString().contains(".txt")) {
                     val responseBody = response.body.string()
                     val chunks = responseBody.split(CHUNK_REGEX1)
                         .filter(String::isNotBlank)
@@ -273,4 +272,9 @@ class KisskhProvider : MainAPI() {
         @JsonProperty("title") val title: String?,
     )
 
+    data class Key(
+        val id: String,
+        val version: String,
+        val key: String,
+    )
 }

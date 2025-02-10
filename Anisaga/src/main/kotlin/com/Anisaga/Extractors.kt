@@ -1,8 +1,5 @@
 package com.Anisaga
 
-
-import android.os.Build
-import androidx.annotation.RequiresApi
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.utils.ExtractorApi
@@ -11,6 +8,7 @@ import com.lagradost.cloudstream3.utils.INFER_TYPE
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.api.Log
 import com.lagradost.cloudstream3.USER_AGENT
+import com.lagradost.cloudstream3.base64DecodeArray
 
 class AnisagaStream : Chillx() {
     override val name = "Anisaga"
@@ -23,7 +21,6 @@ open class Chillx : ExtractorApi() {
     override val mainUrl = "https://chillx.top"
     override val requiresReferer = true
 
-    @RequiresApi(Build.VERSION_CODES.O)
     override suspend fun getUrl(
         url: String,
         referer: String?,
@@ -40,7 +37,7 @@ open class Chillx : ExtractorApi() {
                 throw Exception("Encoded string not found")
             }
             // Decrypt the encoded string
-            val password = "TGRKeQCC8yrxC;5)"
+            val password = "~%aRg@&H3&QEK1QV"
             val decryptedData = decryptXOR(encodedString, password)
             Log.d("Phisher",decryptedData)
             // Extract the m3u8 URL from decrypted data
@@ -94,19 +91,22 @@ open class Chillx : ExtractorApi() {
         }.toList()
     }
 
-
-
     private fun decryptXOR(encryptedData: String, password: String): String {
         return try {
-            val decryptedBytes = encryptedData.chunked(3) // Split into chunks of 3 characters
-                .map { it.toIntOrNull() ?: 0 } // Convert to integer, default to 0 if invalid
-                .mapIndexed { index, num -> (num xor password[index % password.length].code).toByte() } // XOR with repeating password
-                .toByteArray() // Convert to byte array
+            val decodedBytes = base64DecodeArray(encryptedData)
+            val keyBytes = decodedBytes.sliceArray(0 until 16)
+            val dataBytes = decodedBytes.sliceArray(16 until decodedBytes.size)
+            val passwordBytes = password.toByteArray(Charsets.UTF_8)
 
-            String(decryptedBytes, Charsets.UTF_8) // Convert bytes to string
+            val decryptedBytes = dataBytes.mapIndexed { i, byte ->
+                byte.toInt() xor passwordBytes[i % passwordBytes.size].toInt() xor keyBytes[i % keyBytes.size].toInt()
+            }.map { it.toByte() }.toByteArray()
+
+            String(decryptedBytes, Charsets.UTF_8)
         } catch (e: Exception) {
             e.printStackTrace()
             "Decryption Failed"
         }
     }
+
 }

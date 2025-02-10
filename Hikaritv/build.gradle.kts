@@ -1,5 +1,5 @@
 // use an integer for version numbers
-version = 9
+version = 12
 
 
 cloudstream {
@@ -23,4 +23,6 @@ cloudstream {
     // https://recloudstream.github.io/cloudstream/html/app/com.lagradost.cloudstream3/-tv-type/index.html
     tvTypes = listOf("Anime","Cartoon")
     iconUrl="https://hikari.gg/assest/images/logo.png"
+
+    isCrossPlatform = true
 }

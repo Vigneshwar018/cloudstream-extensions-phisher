@@ -37,4 +37,6 @@ cloudstream {
     // https://recloudstream.github.io/cloudstream/html/app/com.lagradost.cloudstream3/-tv-type/index.html
     tvTypes = listOf("AnimeMovie","Anime","Cartoon")
     iconUrl="https://www.google.com/s2/favicons?domain=tooniboy.com&sz=%size%"
+
+    isCrossPlatform = true
 }

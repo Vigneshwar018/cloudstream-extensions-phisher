@@ -2,7 +2,6 @@ package com.Coflix
 
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
-import android.util.Base64
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.lagradost.api.Log
@@ -115,12 +114,13 @@ class Coflix : MainAPI() {
                     val eptitle=ep.title
                     val epposter=fetchImageUrl(ep.image)
                     val ephref=ep.links
-                    episodes+=Episode(
-                        ephref,
-                        eptitle,
-                        season,
-                        epnumber,
-                        epposter)
+                    episodes+=newEpisode(ephref)
+                    {
+                        this.name=eptitle
+                        this.season=season
+                        this.episode=epnumber
+                        this.posterUrl=epposter
+                    }
                 }
             }
             newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
@@ -144,13 +144,9 @@ class Coflix : MainAPI() {
         val iframe = app.get(data).document.select("div.embed iframe").attr("src")
         app.get(iframe).document.select("div.OptionsLangDisp div.OD.OD_FR.REactiv li").amap {
             val base64encoded=it.attr("onclick").substringAfter("showVideo('").substringBefore("',")
-            val url=base64encoded.base64Decode()
+            val url=base64Decode(base64encoded)
             loadExtractor(url,subtitleCallback, callback)
         }
         return true
-    }
-
-    private fun String.base64Decode(): String {
-        return Base64.decode(this, Base64.DEFAULT).toString(Charsets.UTF_8)
     }
 }

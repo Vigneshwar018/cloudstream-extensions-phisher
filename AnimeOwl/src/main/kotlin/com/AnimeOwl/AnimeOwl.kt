@@ -4,6 +4,7 @@ import org.jsoup.nodes.Element
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
 import com.lagradost.api.Log
+import com.lagradost.cloudstream3.syncproviders.SyncIdName
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.nicehttp.RequestBodyTypes
@@ -23,6 +24,11 @@ class Animeowl : MainAPI() {
         "genre/action" to "Action",
         "genre/adventure" to "Adventure",
         "type/movie" to "Movies"
+    )
+
+    override val supportedSyncNames = setOf(
+        SyncIdName.MyAnimeList,
+        SyncIdName.Anilist
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
@@ -118,7 +124,12 @@ class Animeowl : MainAPI() {
                 val href = info.select("a").attr("href")
                 val episode = info.attr("title")
                 val epno=episode.toIntOrNull()
-                Episode(href, "Episode $episode",1,epno)
+                newEpisode(href)
+                {
+                    this.name="Episode $episode"
+                    this.episode=epno
+                    this.season=1
+                }
             }
             newAnimeLoadResponse(title, url, TvType.Anime) {
                 this.posterUrl = poster

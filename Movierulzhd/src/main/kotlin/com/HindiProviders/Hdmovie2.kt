@@ -1,9 +1,6 @@
 package com.Phisher98
 
-//import android.util.Log
-import android.annotation.SuppressLint
 import com.fasterxml.jackson.annotation.JsonProperty
-import com.lagradost.api.Log
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.amap
 import com.lagradost.cloudstream3.app
@@ -11,20 +8,16 @@ import com.lagradost.cloudstream3.mainPageOf
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.loadExtractor
-import okhttp3.Headers
-import okhttp3.Interceptor
-import okhttp3.Response
 import org.jsoup.Jsoup
-import java.time.Year
+import java.util.Calendar
 
 open class Hdmovie2 : Movierulzhd() {
 
-    override var mainUrl = "https://hdmovie2.ninja"
+    override var mainUrl = "https://hdmovie2.study"
     override var name = "Hdmovie2"
-    @SuppressLint("NewApi")
     override val mainPage = mainPageOf(
         "trending" to "Trending",
-        "release/${Year.now().value}" to "Latest",
+        "release/${Calendar.getInstance().get(Calendar.YEAR)}" to "Latest",
         "movies" to "Movies",
         "genre/hindi-webseries" to "Hindi Web Series",
         "genre/netflix" to "Netflix",
@@ -40,7 +33,6 @@ open class Hdmovie2 : Movierulzhd() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        Log.d("Phisher",data)
         if (data.startsWith("{")) {
             val loadData = tryParseJson<LinkData>(data)
             val source = app.post(

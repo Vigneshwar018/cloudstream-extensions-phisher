@@ -1,14 +1,9 @@
 package com.Animekhor
 
-//import android.util.Log
-import android.annotation.SuppressLint
-import android.annotation.TargetApi
-import android.os.Build
-import android.util.Log
+import com.lagradost.api.Log
 import org.jsoup.nodes.Element
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
-import java.util.Base64
 
 class Animekhor : MainAPI() {
     override var mainUrl              = "https://animekhor.org"
@@ -46,7 +41,7 @@ class Animekhor : MainAPI() {
     private fun Element.toSearchResult(): SearchResponse {
         val title     = this.select("div.bsx > a").attr("title")
         val href      = fixUrl(this.select("div.bsx > a").attr("href"))
-        val posterUrl = fixUrlNull(this.select("div.bsx > a img").attr("src").toString())
+        val posterUrl = fixUrlNull(this.select("div.bsx > a img").attr("src"))
         return newMovieSearchResponse(title, href, TvType.Movie) {
             this.posterUrl = posterUrl
         }
@@ -55,7 +50,7 @@ class Animekhor : MainAPI() {
     private fun Element.toSearchquery(): SearchResponse {
         val title     = this.select("div.bsx > a").attr("title")
         val href      = fixUrl(this.select("div.bsx > a").attr("href"))
-        val posterUrl = fixUrlNull(this.select("div.bsx > a img").attr("src").toString())
+        val posterUrl = fixUrlNull(this.select("div.bsx > a img").attr("src"))
         return newMovieSearchResponse(title, href, TvType.Movie) {
             this.posterUrl = posterUrl
         }
@@ -82,23 +77,26 @@ class Animekhor : MainAPI() {
         return searchResponse
     }
 
-    @SuppressLint("SuspiciousIndentation")
     override suspend fun load(url: String): LoadResponse {
         val document = app.get(url).document
         val title= document.selectFirst("h1.entry-title")?.text()?.trim().toString()
         val href=document.selectFirst(".eplister li > a")?.attr("href") ?:""
-        var poster = document.select("meta[property=og:image]").attr("content").toString()
+        var poster = document.select("meta[property=og:image]").attr("content")
         val description = document.selectFirst("div.entry-content")?.text()?.trim()
         val type=document.selectFirst(".spe")?.text().toString()
         val tvtag=if (type.contains("Movie")) TvType.Movie else TvType.TvSeries
         return if (tvtag == TvType.TvSeries) {
             val Eppage= document.selectFirst(".eplister li > a")?.attr("href") ?:""
             val doc= app.get(Eppage).document
-            val epposter = doc.select("meta[property=og:image]").attr("content").toString()
-            @Suppress("NAME_SHADOWING") val episodes=doc.select("div.episodelist > ul > li").map { info->
-                        val href = info.select("a").attr("href") ?:""
+            val epposter = doc.select("meta[property=og:image]").attr("content")
+            val episodes=doc.select("div.episodelist > ul > li").map { info->
+                        val href1 = info.select("a").attr("href")
                         val episode = info.select("a span").text().substringAfter("-").substringBeforeLast("-")
-                        Episode(href, episode, posterUrl = epposter)
+                        newEpisode(href1)
+                        {
+                            this.name=episode
+                            this.posterUrl=epposter
+                        }
             }
             newTvSeriesLoadResponse(title, url, TvType.Anime, episodes.reversed()) {
                 this.posterUrl = poster
@@ -122,7 +120,7 @@ class Animekhor : MainAPI() {
         document.select(".mobius option").forEach { server->
             val base64 = server.attr("value")
             val regex = Regex("""src=["']([^"']+)["']""",RegexOption.IGNORE_CASE)
-            val decodedUrl = base64.decodeBase64()
+            val decodedUrl = base64Decode(base64)
             val matchResult = regex.find(decodedUrl)
             var url = matchResult?.groups?.get(1)?.value ?: "Not found"
             if (url.startsWith("//"))
@@ -134,10 +132,5 @@ class Animekhor : MainAPI() {
 
         }
         return true
-    }
-    @TargetApi(Build.VERSION_CODES.O)
-    fun String.decodeBase64(): String {
-        val decodedBytes = Base64.getDecoder().decode(this)
-        return String(decodedBytes, Charsets.UTF_8)
     }
 }

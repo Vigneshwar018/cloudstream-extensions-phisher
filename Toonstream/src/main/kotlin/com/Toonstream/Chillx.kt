@@ -1,30 +1,19 @@
 package com.Toonstream
 
-import android.os.Build
-import android.util.Base64
-import androidx.annotation.RequiresApi
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.USER_AGENT
 import com.lagradost.cloudstream3.app
+import com.lagradost.cloudstream3.base64DecodeArray
 import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.INFER_TYPE
 import com.lagradost.cloudstream3.utils.Qualities
-import org.json.JSONObject
-import java.nio.ByteBuffer
-import java.security.MessageDigest
-import javax.crypto.Cipher
-import javax.crypto.SecretKeyFactory
-import javax.crypto.spec.IvParameterSpec
-import javax.crypto.spec.PBEKeySpec
-import javax.crypto.spec.SecretKeySpec
 
 open class Chillx : ExtractorApi() {
     override val name = "Chillx"
     override val mainUrl = "https://chillx.top"
     override val requiresReferer = true
 
-    @RequiresApi(Build.VERSION_CODES.O)
     override suspend fun getUrl(
         url: String,
         referer: String?,
@@ -33,16 +22,15 @@ open class Chillx : ExtractorApi() {
     ) {
         try {
             // Fetch the raw response from the URL
-            val res = app.get(url).toString() ?: throw Exception("Failed to fetch URL")
-
+            val res = app.get(url).toString()
             // Extract the encoded string using regex
             val encodedString = Regex("const\\sMatrixs\\s=\\s'(.*?)';").find(res)?.groupValues?.get(1) ?: ""
             if (encodedString.isEmpty()) {
                 throw Exception("Encoded string not found")
             }
             // Decrypt the encoded string
-            val password = "Fvv0O(0ep+X,q-Z+"
-            val decryptedData = decryptAES(encodedString, password)
+            val password = "~%aRg@&H3&QEK1QV"
+            val decryptedData = decryptXOR(encodedString, password)
             // Extract the m3u8 URL from decrypted data
             val m3u8 = Regex("\"?file\"?:\\s*\"([^\"]+)").find(decryptedData)?.groupValues?.get(1)?.trim() ?: ""
             if (m3u8.isEmpty()) {
@@ -94,53 +82,21 @@ open class Chillx : ExtractorApi() {
         }.toList()
     }
 
+    private fun decryptXOR(encryptedData: String, password: String): String {
+        return try {
+            val decodedBytes = base64DecodeArray(encryptedData)
+            val keyBytes = decodedBytes.sliceArray(0 until 16)
+            val dataBytes = decodedBytes.sliceArray(16 until decodedBytes.size)
+            val passwordBytes = password.toByteArray(Charsets.UTF_8)
 
+            val decryptedBytes = dataBytes.mapIndexed { i, byte ->
+                byte.toInt() xor passwordBytes[i % passwordBytes.size].toInt() xor keyBytes[i % keyBytes.size].toInt()
+            }.map { it.toByte() }.toByteArray()
 
-    private fun decryptAES(encryptedData: String, password: String): String {
-        try {
-            // Decode Base64-encoded input
-            val decodedBytes = Base64.decode(encryptedData, Base64.DEFAULT)
-
-            // Convert bytes to 32-bit words (similar to bytes_to_32bit_words in Python)
-            val resultWords = bytesTo32BitWords(decodedBytes)
-
-            // Extract IV (first 16 bytes, 4 words)
-            val ivBytes = ByteBuffer.allocate(16).apply {
-                for (i in 0 until 4) putInt(resultWords[i])
-            }.array()
-
-            // Generate the key using SHA-256 hash of the password
-            val key = MessageDigest.getInstance("SHA-256").digest(password.toByteArray())
-
-            // Initialize AES Cipher in CBC mode
-            val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
-            cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(key, "AES"), IvParameterSpec(ivBytes))
-
-            // Extract ciphertext
-            val cipherText = ByteBuffer.allocate((resultWords.size - 4) * 4).apply {
-                for (i in 4 until resultWords.size) putInt(resultWords[i])
-            }.array()
-
-            // Decrypt and return the plaintext
-            return String(cipher.doFinal(cipherText), Charsets.UTF_8)
+            String(decryptedBytes, Charsets.UTF_8)
         } catch (e: Exception) {
             e.printStackTrace()
-            return "Decryption Failed"
+            "Decryption Failed"
         }
-    }
-
-    // Convert byte array to 32-bit word array
-    private fun bytesTo32BitWords(byteData: ByteArray): IntArray {
-        val words = mutableListOf<Int>()
-        for (i in byteData.indices step 4) {
-            var word = 0
-            for (j in 0 until 4) {
-                if (i + j < byteData.size) {
-                    word = word or (byteData[i + j].toInt() and 0xFF shl (24 - j * 8))
-                }
-            }
-            words.add(word)
-        }
-        return words.toIntArray()
     }
 }
