@@ -10,7 +10,7 @@ import com.lagradost.cloudstream3.utils.*
 import org.jsoup.nodes.Element
 
 class TamilYogiProvider : MainAPI() { // all providers must be an instance of MainAPI
-    override var mainUrl = "https://1tamilyogi.pizza"
+    override var mainUrl = "https://1tamilyogi.date"
     override var name = "TamilYogi"
     override val hasMainPage = true
     override var lang = "ta"
@@ -28,7 +28,7 @@ class TamilYogiProvider : MainAPI() { // all providers must be an instance of Ma
         "$mainUrl/tamil-movies-online/" to "New Movies",
         "$mainUrl/tamil-hd-movies/" to "HD Movies",
         "$mainUrl/tamil-dubbed-movies-online-new/" to "Dubbed Movies",
-        "$mainUrl/tamilyogi-tamil-web-series-tamilmv/" to "TV Series"
+        "$mainUrl/tamilyogi-tamil-web-series-tamilmv-new/" to "TV Series"
     )
 
     override suspend fun getMainPage(
