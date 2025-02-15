@@ -1,11 +1,12 @@
 // use an integer for version numbers
-version =29
+version = 3
+
 
 cloudstream {
     // All of these properties are optional, you can safely remove them
 
-    description = "Indian Multi-language HD Provider"
-    language = "hi"
+    description = "ToonHub Multi Language"
+    language    = "hi"
     authors = listOf("Phisher98")
 
     /**
@@ -20,12 +21,8 @@ cloudstream {
     // List of video source types. Users are able to filter for extensions in a given category.
     // You can find a list of avaliable types here:
     // https://recloudstream.github.io/cloudstream/html/app/com.lagradost.cloudstream3/-tv-type/index.html
-    tvTypes = listOf(
-        "Movie",
-        "TvSeries",
-        "Anime",
-    )
-    iconUrl = "https://raw.githubusercontent.com/LikDev-256/likdev256-tamil-providers/master/MultiMoviesProvider/icon.png"
+    tvTypes = listOf("AnimeMovie","Anime","Cartoon")
+    iconUrl="https://toonhub4u.me/wp-content/uploads/2024/02/Untitled.png"
 
     isCrossPlatform = true
 }

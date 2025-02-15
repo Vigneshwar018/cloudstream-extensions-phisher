@@ -2,14 +2,13 @@
 
 import org.jetbrains.kotlin.konan.properties.Properties
 
-version = 150
+version = 159
 android {
     defaultConfig {
         val properties = Properties()
         properties.load(project.rootProject.file("local.properties").inputStream())
         android.buildFeatures.buildConfig=true
         buildConfigField("String", "TMDB_API", "\"${properties.getProperty("TMDB_API")}\"")
-        buildConfigField("String", "GHOSTX_API", "\"${properties.getProperty("GHOSTX_API")}\"")
         buildConfigField("String", "CINEMATV_API", "\"${properties.getProperty("CINEMATV_API")}\"")
         buildConfigField("String", "SFMOVIES_API", "\"${properties.getProperty("SFMOVIES_API")}\"")
         buildConfigField("String", "ZSHOW_API", "\"${properties.getProperty("ZSHOW_API")}\"")
@@ -34,10 +33,10 @@ android {
         buildConfigField("String", "WASMAPI", "\"${properties.getProperty("WASMAPI")}\"")
         buildConfigField("String", "KissKh", "\"${properties.getProperty("KissKh")}\"")
         buildConfigField("String", "KisskhSub", "\"${properties.getProperty("KisskhSub")}\"")
+        buildConfigField("String", "SUPERSTREAM_THIRD_API", "\"${properties.getProperty("SUPERSTREAM_THIRD_API")}\"")
+        buildConfigField("String", "SUPERSTREAM_FOURTH_API", "\"${properties.getProperty("SUPERSTREAM_FOURTH_API")}\"")
+
     }
-}
-dependencies {
-    implementation(project(":AnimeOwl"))
 }
 
 cloudstream {

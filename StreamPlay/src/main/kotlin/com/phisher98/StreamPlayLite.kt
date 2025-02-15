@@ -4,7 +4,6 @@ import com.Phisher98.StreamPlayExtractor.invoke2embed
 import com.Phisher98.StreamPlayExtractor.invokeAllMovieland
 import com.Phisher98.StreamPlayExtractor.invokeAnimes
 import com.Phisher98.StreamPlayExtractor.invokeAoneroom
-//import com.Phisher98.StreamPlayExtractor.invokeDoomovies
 import com.Phisher98.StreamPlayExtractor.invokeDramaday
 import com.Phisher98.StreamPlayExtractor.invokeDreamfilm
 import com.Phisher98.StreamPlayExtractor.invokeFlixon
@@ -14,11 +13,9 @@ import com.Phisher98.StreamPlayExtractor.invokeM4uhd
 import com.Phisher98.StreamPlayExtractor.invokeNinetv
 import com.Phisher98.StreamPlayExtractor.invokeNowTv
 import com.Phisher98.StreamPlayExtractor.invokeRidomovies
-//import com.Phisher98.StreamPlayExtractor.invokeSmashyStream
 import com.Phisher98.StreamPlayExtractor.invokeEmovies
 import com.Phisher98.StreamPlayExtractor.invokeNetmovies
 import com.Phisher98.StreamPlayExtractor.invokeShowflix
-import com.Phisher98.StreamPlayExtractor.invokeGhostx
 import com.Phisher98.StreamPlayExtractor.invokeWatchCartoon
 import com.Phisher98.StreamPlayExtractor.invokeWatchsomuch
 import com.Phisher98.StreamPlayExtractor.invokeZoechip
@@ -27,6 +24,7 @@ import com.Phisher98.StreamPlayExtractor.invokeFlicky
 import com.Phisher98.StreamPlayExtractor.invokeFlixAPIHQ
 import com.Phisher98.StreamPlayExtractor.invokeNepu
 import com.Phisher98.StreamPlayExtractor.invokeRiveStream
+import com.Phisher98.StreamPlayExtractor.invokeSuperstream
 import com.Phisher98.StreamPlayExtractor.invokeVidsrccc
 import com.Phisher98.StreamPlayExtractor.invokeVidsrcsu
 import com.lagradost.cloudstream3.SubtitleFile
@@ -109,15 +107,6 @@ class StreamPlayLite : StreamPlay() {
                     res.season,
                     res.episode,
                     subtitleCallback,
-                    callback
-                )
-            },
-            {
-                if (!res.isAnime) invokeGhostx(
-                    res.title,
-                    res.year,
-                    res.season,
-                    res.episode,
                     callback
                 )
             },
@@ -270,9 +259,18 @@ class StreamPlayLite : StreamPlay() {
                     res.year,
                     res.season,
                     res.episode,
+                    subtitleCallback,
                     callback
                 )
 
+            },
+            {
+                invokeSuperstream(
+                    res.imdbId,
+                    res.season,
+                    res.episode,
+                    callback
+                )
             }
         )
         return true

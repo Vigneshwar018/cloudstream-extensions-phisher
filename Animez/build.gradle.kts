@@ -1,11 +1,12 @@
 // use an integer for version numbers
-version =29
+version = 1
+
 
 cloudstream {
     // All of these properties are optional, you can safely remove them
 
-    description = "Indian Multi-language HD Provider"
-    language = "hi"
+    description = "Animez Animes"
+    language    = "en"
     authors = listOf("Phisher98")
 
     /**
@@ -20,12 +21,8 @@ cloudstream {
     // List of video source types. Users are able to filter for extensions in a given category.
     // You can find a list of avaliable types here:
     // https://recloudstream.github.io/cloudstream/html/app/com.lagradost.cloudstream3/-tv-type/index.html
-    tvTypes = listOf(
-        "Movie",
-        "TvSeries",
-        "Anime",
-    )
-    iconUrl = "https://raw.githubusercontent.com/LikDev-256/likdev256-tamil-providers/master/MultiMoviesProvider/icon.png"
+    tvTypes = listOf("Movie","Anime","AnimeMovie")
+    iconUrl="https://animez.org/upload/logos/2024/03/logo_1710148637_65eecc1d2584c.png"
 
     isCrossPlatform = true
 }

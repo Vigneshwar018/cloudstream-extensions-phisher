@@ -1362,6 +1362,21 @@ data class RiveStreamSourceData(
     val format: String,
 )
 
+data class RivestreamEmbedResponse(
+    val data: RivestreamEmbedData,
+)
+
+data class RivestreamEmbedData(
+    val sources: List<RivestreamEmbedSource>,
+)
+
+data class RivestreamEmbedSource(
+    val host: String,
+    @JsonProperty("host_id")
+    val hostId: Long,
+    val link: String,
+)
+
 data class VidSrcVipSource(
     val language: String,
     @JsonProperty("m3u8_stream")
@@ -1490,4 +1505,64 @@ data class Trackiframe(
     val file: String,
     val label: String,
 )
+
+data class SeasonDetail
+    (
+    val quality:String?,
+    val episodeLinkMap:MutableMap<String,MutableList<String>>?,
+    val season:String?,
+)
+
+
+//SuperStream
+
+data class ER(
+    @JsonProperty("code") val code: Int? = null,
+    @JsonProperty("msg") val msg: String? = null,
+    @JsonProperty("server_runtime") val serverRuntime: Double? = null,
+    @JsonProperty("server_name") val serverName: String? = null,
+    @JsonProperty("data") val data: DData? = null,
+)
+
+data class DData(
+    @JsonProperty("link") val link: String? = null,
+    @JsonProperty("file_list") val fileList: List<FileList>? = null,
+)
+
+data class FileList(
+    @JsonProperty("fid") val fid: Long? = null,
+    @JsonProperty("file_name") val fileName: String? = null,
+    @JsonProperty("oss_fid") val ossFid: Long? = null,
+)
+
+data class ExternalResponse(
+    @JsonProperty("code") val code: Int? = null,
+    @JsonProperty("msg") val msg: String? = null,
+    @JsonProperty("server_runtime") val serverRuntime: Double? = null,
+    @JsonProperty("server_name") val serverName: String? = null,
+    @JsonProperty("data") val data: Data? = null,
+) {
+    data class Data(
+        @JsonProperty("link") val link: String? = null,
+        @JsonProperty("file_list") val fileList: List<FileList>? = null,
+    ) {
+        data class FileList(
+            @JsonProperty("fid") val fid: Long? = null,
+            @JsonProperty("file_name") val fileName: String? = null,
+            @JsonProperty("oss_fid") val ossFid: Long? = null,
+        )
+    }
+}
+
+data class ExternalSourcesWrapper(
+    @JsonProperty("sources") val sources: List<ExternalSources>? = null
+)
+
+data class ExternalSources(
+    @JsonProperty("source") val source: String? = null,
+    @JsonProperty("file") val file: String? = null,
+    @JsonProperty("label") val label: String? = null,
+    @JsonProperty("type") val type: String? = null,
+)
+
 
