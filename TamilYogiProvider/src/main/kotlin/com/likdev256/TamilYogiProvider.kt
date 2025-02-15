@@ -49,8 +49,8 @@ class TamilYogiProvider : MainAPI() { // all providers must be an instance of Ma
             it.toSearchResult()
         }
 
-        return HomePageResponse(arrayListOf(HomePageList(request.name, home, isHorizontalImages = true)), hasNext = true)
-        //return newHomePageResponse(request.name, home)
+        return newHomePageResponse(arrayListOf(HomePageList(request.name, home, isHorizontalImages = true)), hasNext = true)
+//        return newHomePageResponse(request.name, home,hasNext = true)
     }
 
     private fun Element.toSearchResult(): SearchResponse? {

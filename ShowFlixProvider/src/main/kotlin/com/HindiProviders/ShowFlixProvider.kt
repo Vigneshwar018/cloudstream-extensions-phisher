@@ -212,7 +212,7 @@ class ShowFlixProvider : MainAPI() { // all providers must be an instance of Mai
                 }
             elements.add(HomePageList(request.name, home))
         }
-        return HomePageResponse(elements, hasNext = true)
+        return newHomePageResponse(elements, hasNext = true)
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
