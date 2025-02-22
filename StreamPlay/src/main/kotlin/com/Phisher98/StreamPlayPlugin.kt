@@ -1,6 +1,8 @@
 package com.Phisher98
 
-import com.lagradost.cloudstream3.plugins.BasePlugin
+import android.content.Context
+import androidx.appcompat.app.AppCompatActivity
+import com.Phisher98.settings.SettingsFragment
 import com.lagradost.cloudstream3.plugins.CloudstreamPlugin
 import com.lagradost.cloudstream3.extractors.DoodYtExtractor
 import com.lagradost.cloudstream3.extractors.FileMoon
@@ -19,15 +21,16 @@ import com.lagradost.cloudstream3.extractors.VidSrcExtractor
 import com.lagradost.cloudstream3.extractors.Vidmolyme
 import com.lagradost.cloudstream3.extractors.Vidplay
 import com.lagradost.cloudstream3.extractors.Voe
+import com.lagradost.cloudstream3.plugins.Plugin
 
 @CloudstreamPlugin
-class StreamPlayPlugin: BasePlugin() {
-    override fun load() {
-        // All providers should be added in this manner. Please don't edit the providers list directly.
-        registerMainAPI(StreamPlay())
+class StreamPlayPlugin: Plugin() {
+    override fun load(context: Context) {
+        val sharedPref = context.getSharedPreferences("StreamPlay", Context.MODE_PRIVATE)
+        registerMainAPI(StreamPlay(sharedPref))
         registerMainAPI(StreamPlayLite())
         registerMainAPI(StreamPlayTorrent())
-        //registerMainAPI(StreamPlayTest())
+        //registerMainAPI(StreamPlayTest(sharedPref))
         registerMainAPI(StreamPlayAnime())
         registerExtractorAPI(Animefever())
         registerExtractorAPI(Multimovies())
@@ -112,5 +115,13 @@ class StreamPlayPlugin: BasePlugin() {
         registerExtractorAPI(GDMirrorbot())
         registerExtractorAPI(Boosterx())
         registerExtractorAPI(OwlExtractor())
+        registerExtractorAPI(Rapidplayers())
+        registerExtractorAPI(Maxfinishseveral())
+
+        val activity = context as AppCompatActivity
+        openSettings = {
+            val frag = SettingsFragment(this, sharedPref)
+            frag.show(activity.supportFragmentManager, "Frag")
+        }
     }
 }

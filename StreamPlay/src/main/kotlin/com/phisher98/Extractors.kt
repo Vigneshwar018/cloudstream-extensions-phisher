@@ -2,6 +2,8 @@ package com.Phisher98
 
 import com.Phisher98.StreamPlay.Companion.animepaheAPI
 import com.fasterxml.jackson.annotation.JsonProperty
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
 import com.google.gson.JsonElement
 import com.google.gson.JsonParser
 import com.lagradost.api.Log
@@ -29,9 +31,6 @@ import org.json.JSONObject
 import java.math.BigInteger
 import java.net.URI
 import java.security.MessageDigest
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
 
 
 open class Playm4u : ExtractorApi() {
@@ -662,6 +661,10 @@ class MultimoviesAIO: StreamWishExtractor() {
     override var mainUrl = "https://allinonedownloader.fun"
 }
 
+class Rapidplayers: StreamWishExtractor() {
+    override var mainUrl = "https://rapidplayers.com"
+}
+
 class Flaswish : Ridoo() {
     override val name = "Flaswish"
     override var mainUrl = "https://flaswish.com"
@@ -685,19 +688,23 @@ open class Chillx : ExtractorApi() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
+        val headers = mapOf(
+            "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "Accept-Language" to "en-US,en;q=0.9",
+        )
+
         try {
             // Fetch the raw response from the URL
-            val res = app.get(url).toString()
+            val res = app.get(url,referer=mainUrl,headers=headers).toString()
 
-            // Extract the encoded string using regex
             val encodedString = Regex("const\\s+\\w+\\s*=\\s*'(.*?)'").find(res)?.groupValues?.get(1) ?: ""
             if (encodedString.isEmpty()) {
                 throw Exception("Encoded string not found")
             }
+
             // Decrypt the encoded string
-            val password = "HG1I}V!u\$IR6Rxdf"
-            val decryptedData = decryptXOR(encodedString, password)
-            Log.d("Phisher",decryptedData)
+            val password = "CbrP~To{lEc1i$,+"
+            val decryptedData = rc4Decrypt(password, hexToBytes(encodedString))
             // Extract the m3u8 URL from decrypted data
             val m3u8 = Regex("\"?file\"?:\\s*\"([^\"]+)").find(decryptedData)?.groupValues?.get(1)?.trim() ?: ""
             if (m3u8.isEmpty()) {
@@ -749,22 +756,30 @@ open class Chillx : ExtractorApi() {
         }.toList()
     }
 
-    private fun decryptXOR(encryptedData: String, password: String): String {
-        return try {
-            val passwordBytes = password.toByteArray(Charsets.UTF_8)
-            val decryptedBytes = (encryptedData.indices step 2)
-                .map { i ->
-                    val byteValue = encryptedData.substring(i, i + 2).toInt(16) // Convert hex to int
-                    byteValue xor passwordBytes[(i / 2) % passwordBytes.size].toInt() // XOR with repeating password
-                }
-                .map { it.toByte() } // Convert to Byte
-                .toByteArray() // Convert to ByteArray
+    private fun hexToBytes(hex: String): ByteArray {
+        return ByteArray(hex.length / 2) { i -> hex.substring(2 * i, 2 * i + 2).toInt(16).toByte() }
+    }
 
-            String(decryptedBytes, Charsets.UTF_8) // Convert ByteArray to String
-        } catch (e: Exception) {
-            e.printStackTrace()
-            "Decryption Failed"
+    private fun rc4Decrypt(key: String, encryptedData: ByteArray): String {
+        val s = IntArray(256) { it }
+        var j = 0
+        for (i in 0 until 256) {
+            j = (j + s[i] + key[i % key.length].code) % 256
+            s[i] = s[j].also { s[j] = s[i] }
         }
+
+        var i = 0
+        j = 0
+        val decryptedData = ByteArray(encryptedData.size)
+        for (index in encryptedData.indices) {
+            i = (i + 1) % 256
+            j = (j + s[i]) % 256
+            s[i] = s[j].also { s[j] = s[i] }
+            val k = s[(s[i] + s[j]) % 256]
+            decryptedData[index] = (encryptedData[index].toInt() xor k).toByte()
+        }
+
+        return String(decryptedData)
     }
 }
 
@@ -793,6 +808,10 @@ class Graceaddresscommunity : Voe() {
 
 class Sethniceletter : Voe() {
     override var mainUrl = "https://sethniceletter.com"
+}
+
+class Maxfinishseveral : Voe() {
+    override var mainUrl = "https://maxfinishseveral.com"
 }
 
 
@@ -1623,67 +1642,83 @@ class OwlExtractor : ExtractorApi() {
             Deobfuscator.deobfuscateScript(it)
         }
         val jwt=findFirstJwt(epJS?: throw Exception("Unable to get jwt")) ?:return
-
-        val servers=app.get("$referer$datasrc").parsedSafe<Response>()
-        val sources= mutableListOf<String>()
-        servers?.kaido?.let {
-            sources+="$it$jwt"
+        val jsonString=app.get("$referer$datasrc").toString()
+        val mapper = jacksonObjectMapper()
+        val servers: Map<String, List<VideoData>> = mapper.readValue(jsonString)
+        val sources = mutableListOf<Pair<String, String>>()
+        servers["kaido"]?.firstOrNull()?.url?.let {
+            val finalUrl = "$it$jwt"
+            sources += "Kaido" to finalUrl
         }
 
-        servers?.luffy?.let {
-            val m3u8= app.get("$it$jwt", allowRedirects = false).headers["location"] ?:return
-            sources+=m3u8
-        }
-        servers?.zoro?.let {
-            val m3u8= app.get("$it$jwt").parsedSafe<Zoro>()?.url ?:return
-            val vtt= app.get("$it$jwt").parsedSafe<Zoro>()?.subtitle ?:return
-            sources+=m3u8
-            sources+=vtt
+        servers["luffy"]?.forEach { video ->
+            val finalUrl = "${video.url}$jwt"
+            val m3u8 = getRedirectedUrl(finalUrl)
+            Log.d("Phisher", "Luffy ${video.resolution} M3U8 Added: $m3u8")
+            sources += "Luffy-${video.resolution}" to m3u8
         }
 
-        sources.amap { m3u8->
-            if (m3u8.contains("vvt"))
-            {
-                subtitleCallback.invoke(
-                    SubtitleFile(
-                        "English",
-                        m3u8
-                    )
-                )
-            }
-            else
-            {
+        servers["zoro"]?.firstOrNull()?.url?.let {
+            val finalUrl = "$it$jwt"
+            val jsonResponse = getZoroJson(finalUrl) ?: return
+            val (m3u8, vtt) = fetchZoroUrl(jsonResponse) ?: return
+            sources += "Zoro" to m3u8
+            sources += "Zoro" to vtt
+        }
+
+
+        sources.amap { (key, url) ->
+            if (url.endsWith(".vvt")) {
+                subtitleCallback.invoke(SubtitleFile("English", url))
+            } else {
                 callback.invoke(
                     ExtractorLink(
-                        name,
-                        name,
-                        m3u8,
+                        "AnimeOwl $key",
+                        "AnimeOwl $key",
+                        url,
                         mainUrl,
-                        Qualities.P1080.value,
-                        INFER_TYPE,
+                        when {
+                            key.contains("480") -> Qualities.P480.value
+                            key.contains("720") -> Qualities.P720.value
+                            key.contains("1080") -> Qualities.P1080.value
+                            key.contains("1440") -> Qualities.P1440.value
+                            key.contains("2160") -> Qualities.P2160.value
+                            else -> Qualities.P1080.value
+                        },
+                        INFER_TYPE
                     )
                 )
             }
         }
-
         return
     }
+    private fun findFirstJwt(text: String): String? {
+        val jwtPattern = Regex("['\"]([A-Za-z0-9-_]+\\.[A-Za-z0-9-_]+\\.[A-Za-z0-9-_]+)['\"]")
+        return jwtPattern.find(text)?.groupValues?.get(1)
+    }
+
+    private fun getRedirectedUrl(url: String): String {
+        return url
+    }
+
+    data class ZoroResponse(val url: String, val subtitle: String)
+
+    private suspend fun getZoroJson(url: String): String {
+        return app.get(url).text
+    }
+
+    private fun fetchZoroUrl(jsonResponse: String): Pair<String, String>? {
+        return try {
+            val response = jacksonObjectMapper().readValue<ZoroResponse>(jsonResponse)
+            response.url to response.subtitle
+        } catch (e: Exception) {
+            Log.e("Error:", "Error parsing Zoro JSON: ${e.message}")
+            null
+        }
+    }
+
+    data class VideoData(val resolution: String, val url: String)
+
 }
-
-private fun findFirstJwt(text: String): String? {
-    val jwtPattern = Regex("['\"]([A-Za-z0-9-_]+\\.[A-Za-z0-9-_]+\\.[A-Za-z0-9-_]+)['\"]")
-    return jwtPattern.find(text)?.groupValues?.get(1)
-}
-
-data class Response(
-    val kaido: String? = null,
-    val luffy: String? = null,
-    val zoro: String? = null,
-)
-
-data class Zoro(
-    val url: String,
-    val subtitle: String,
-)
 
 

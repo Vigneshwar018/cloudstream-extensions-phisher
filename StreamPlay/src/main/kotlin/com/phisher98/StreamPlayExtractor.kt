@@ -1,5 +1,7 @@
 package com.Phisher98
 
+import android.annotation.SuppressLint
+import android.content.SharedPreferences
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.google.gson.Gson
@@ -27,7 +29,9 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.jsoup.*
 import org.jsoup.nodes.Document
+import org.jsoup.nodes.Element
 import org.jsoup.select.Elements
+import org.mozilla.javascript.Context
 import org.mozilla.javascript.Scriptable
 import java.time.Instant
 import java.util.Locale
@@ -876,6 +880,35 @@ object StreamPlayExtractor : StreamPlay() {
 
 
 
+    suspend fun invokeAnizone(
+        jptitle: String? = null,
+        episode: Int? = null,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        val href = app.get("https://anizone.to/anime?search=${jptitle}")
+            .document
+            .select("div.h-6.inline.truncate a")
+            .firstOrNull {
+                val text = it.text()
+                text.equals(jptitle, ignoreCase = true)
+            }?.attr("href")
+        val m3u8 = href?.let {
+            app.get("$it/$episode").document.select("media-player").attr("src")
+        } ?: ""
+        callback.invoke(
+            ExtractorLink(
+                "Anizone",
+                "Anizone",
+                m3u8,
+                "",
+                Qualities.P1080.value,
+                INFER_TYPE
+            )
+        )
+    }
+
+
+
     suspend fun invokeKisskh(
         title: String? = null,
         season: Int? = null,
@@ -961,9 +994,10 @@ object StreamPlayExtractor : StreamPlay() {
                 .parsedSafe<KisskhKey>()?.key ?: ""
             app.get("$kissKhAPI/api/Sub/$epsId&kkey=$kkey1").text.let { resSub ->
                 tryParseJson<List<KisskhSubtitle>>(resSub)?.map { sub ->
+                    val lang= getLanguage(sub.label) ?:"UnKnown"
                     subtitleCallback.invoke(
                         SubtitleFile(
-                            getLanguage(sub.label ?: return@map), sub.src
+                                lang, sub.src
                                 ?: return@map
                         )
                     )
@@ -999,6 +1033,7 @@ object StreamPlayExtractor : StreamPlay() {
         val TMDBdate = date?.substringBefore("-")
         val zorotitle = malsync?.zoro?.firstNotNullOf { it.value["title"] }?.replace(":", " ")
         val hianimeurl = malsync?.zoro?.firstNotNullOf { it.value["url"] }
+        val kaasslug=malsync?.KickAssAnime?.firstNotNullOf { it.value["identifier"] }
         argamap(
             {
                 invokeAnimetosho(malId, season, episode, subtitleCallback, callback)
@@ -1020,7 +1055,7 @@ object StreamPlayExtractor : StreamPlay() {
                 )
             },
             {
-                //invokeAniwave(aniwaveId, episode, subtitleCallback, callback)
+                invokeKickAssAnime(kaasslug, episode, subtitleCallback, callback)
             },
             {
                 val animepahe = malsync?.animepahe?.firstNotNullOfOrNull { it.value["url"] }
@@ -1046,11 +1081,13 @@ object StreamPlayExtractor : StreamPlay() {
             },
             {
                 val Gogourl = malsync?.Gogoanime?.firstNotNullOfOrNull { it.value["url"] }
-                Log.d("Phisher", Gogourl.toString())
                 if (Gogourl != null) invokeAnitaku(Gogourl, episode, subtitleCallback, callback)
             },
             {
                 invokeTokyoInsider(jptitle,title, episode, subtitleCallback, callback)
+            },
+            {
+                invokeAnizone(jptitle, episode, callback)
             }
         )
     }
@@ -1407,6 +1444,64 @@ object StreamPlayExtractor : StreamPlay() {
         }
     }
 
+
+    suspend fun invokeKickAssAnime(
+        slug: String?,
+        episode: Int? = null,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        val json = app.get("$KickassAPI/api/show/$slug/episodes?ep=1&lang=ja-JP").toString()
+        val jsonresponse = parseJsonToEpisodes(json)
+
+        val matchedSlug = jsonresponse.firstOrNull {
+            it.episode_number.toString().substringBefore(".").toIntOrNull() == episode
+        }?.slug ?: return
+
+        val href = "$KickassAPI/api/show/$slug/episode/ep-$episode-$matchedSlug"
+        val servers = app.get(href).parsedSafe<ServersResKAA>()?.servers ?: return
+
+        servers.firstOrNull { it.name.contains("VidStreaming") }?.let { server ->
+            val host = getBaseUrl(server.src)
+            val headers = mapOf(
+                "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+            )
+
+            val key = "e13d38099bf562e8b9851a652d2043d3".toByteArray()
+            val query = server.src.substringAfter("?id=").substringBefore("&")
+            val html = app.get(server.src).toString()
+
+            val (sig, timeStamp, route) = getSignature(html, server.name, query, key) ?: return
+            val sourceUrl = "$host$route?id=$query&e=$timeStamp&s=$sig"
+
+            val encJson = app.get(sourceUrl, headers = headers).parsedSafe<EncryptedKAA>()?.data ?: return
+            val (encryptedData, ivHex) = encJson.substringAfter(":\"").substringBefore('"').split(":")
+            val decrypted = tryParseJson<m3u8KAA>(CryptoAES.decrypt(encryptedData, key, ivHex.decodeHex()).toJson()) ?: return
+
+            val m3u8 = httpsify(decrypted.hls)
+            val videoHeaders = mapOf(
+                "Accept" to "*/*",
+                "Accept-Language" to "en-US,en;q=0.5",
+                "Origin" to host,
+                "Sec-Fetch-Dest" to "empty",
+                "Sec-Fetch-Mode" to "cors",
+                "Sec-Fetch-Site" to "cross-site"
+            )
+
+            callback(
+                ExtractorLink(
+                    "VidStreaming", "VidStreaming", m3u8, "", Qualities.P1080.value,
+                    type = ExtractorLinkType.M3U8, headers = videoHeaders
+                )
+            )
+
+            decrypted.subtitles.forEach { subtitle ->
+                subtitleCallback(SubtitleFile(subtitle.name, subtitle.src))
+            }
+        } ?: Log.d("Error:", "Not Found")
+    }
+
+
     suspend fun invokeMiruroanimeGogo(
         animeIds: List<String?>? = null,
         title: String? = null,
@@ -1627,9 +1722,8 @@ object StreamPlayExtractor : StreamPlay() {
         )
         app.get(url, headers = headers, timeout = 100L)
             .parsedSafe<SubtitlesAPI>()?.subtitles?.amap {
-            val lan = it.lang
-            val suburl = it.url ?: null
-            if (suburl != null)
+                val lan = getLanguage(it.lang) ?:"Unknown"
+                val suburl = it.url
                 subtitleCallback.invoke(
                     SubtitleFile(
                         lan.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },  // Use label for the name
@@ -1645,12 +1739,11 @@ object StreamPlayExtractor : StreamPlay() {
         season: Int? = null,
         episode: Int? = null,
         subtitleCallback: (SubtitleFile) -> Unit,
-        callback: (ExtractorLink) -> Unit,
     ) {
         val url = if (season == null) {
             "$WyZIESUBAPI/search?id=$id"
         } else {
-            "$WyZIESUBAPI/search?id=$id/$season/$episode"
+            "$WyZIESUBAPI/search?id=$id&season=$season&episode=$episode"
         }
 
         val res = app.get(url).toString()
@@ -3493,7 +3586,6 @@ object StreamPlayExtractor : StreamPlay() {
         } else {
             "$nineTvAPI/tv/$tmdbId-$season-$episode"
         }
-
         val iframe =
             app.get(
                 url,
@@ -4429,7 +4521,13 @@ suspend fun invokeFlixAPIHQ(
         for (link in decryptedLinks) {
             val url = "$Primewire/links/go/$link"
             val oUrl = app.get(url)
-            loadExtractor(oUrl.url, subtitleCallback, callback)
+            loadSourceNameExtractor(
+                "Primewire",
+                oUrl.url,
+                "",
+                subtitleCallback,
+                callback
+            )
         }
     }
 
@@ -4607,58 +4705,83 @@ suspend fun invokeFlixAPIHQ(
 
 
     suspend fun invokeHindMoviez(
-        id: Int? = null,
-        imdbId: String? = null,
         title: String? = null,
+        imdbId: String? = null,
         season: Int? = null,
         episode: Int? = null,
-        year: Int? = null,
-        subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
-
         try {
             val fixTitle = if (season == null) {
-                title?.replace(" ", "+")
+                imdbId
             } else {
                 "$title season $season".replace(" ", "+")
             }
             val doc = app.get("$HindMoviezApi/?s=$fixTitle", cacheTime = 60, timeout = 30).document
-            val postUrl =
-                doc.select(".post").firstOrNull()?.select(".entry-title-link")?.attr("href")
-            val postDoc = postUrl?.let { app.get(it, cacheTime = 60, timeout = 30).document }
-            val title = postDoc?.selectFirst(".entry-title")?.text() ?: ""
-            val qualityRegex2 = "(\\d{3,4})[pP]".toRegex()
-            if (title.lowercase().contains("season") && season != null) {
-                val elements = postDoc?.selectFirst(".entry-content")
-                val qualityRegex = ">(\\d{3,4}p).*<".toRegex()
-                val seasonRegex = "(\\d)-(\\d)"
-                val isMultiSeason = seasonRegex.toRegex().containsMatchIn(title)
+            var filterpost: Element? = null
+            if (season != null) {
 
-                var startSeason: Int? = 1
-                var endSeason: Int? = 1
-
-                if (isMultiSeason) {
-                    startSeason = seasonRegex.toRegex().find(title)?.groups?.get(1)?.value?.toInt()
-                    endSeason = seasonRegex.toRegex().find(title)?.groups?.get(2)?.value?.toInt()
+                //doc.select(".post").filter { element -> element.select(".entry-title-link").text().contains(title.toString()) }.firstOrNull()
+                for (element in doc.select(".post"))
+                {
+                    val title =  element.select(".entry-title-link").text()
+                    if (title.contains(title)) {
+                        val multiSeasonRegex = "(\\d)-(\\d)"
+                        val seasonRegex = "([S|s]eason\\s*(\\d{1,3}))"
+                        val isMultiSeason = multiSeasonRegex.toRegex().containsMatchIn(title)
+                        var startSeasonFilter: Int? = 1
+                        var endSeasonFilter: Int? = 1
+                        if (isMultiSeason) {
+                            startSeasonFilter = multiSeasonRegex.toRegex().find(title)?.groups?.get(1)?.value?.toInt()
+                            endSeasonFilter = multiSeasonRegex.toRegex().find(title)?.groups?.get(2)?.value?.toInt()
+                            if (startSeasonFilter != null && endSeasonFilter != null) {
+                                if(season >= startSeasonFilter && season <= endSeasonFilter) {
+                                    filterpost = element
+                                }
+                            }
+                        }
+                        else
+                        {
+                            val postSeason = seasonRegex.toRegex().find(title)?.groups?.get(2)?.value?.toInt()
+                            if(season == postSeason)
+                            {
+                                filterpost = element
+                            }
+                        }
+                    }
                 }
-
-                if (startSeason != null && endSeason != null) {
-
-                    val seasonList = mutableListOf<SeasonDetail>()
-                    for (i in startSeason..endSeason) {
-
-                        if (elements != null) {
-                            for (j in 0..(elements.children().size - 1)) {
-
-                                val item = elements?.children()?.get(j)
-                                val currentSeason = "Season $i"
-                                if (item != null) {
+            }
+            else
+            {
+                filterpost = doc.select(".post").firstOrNull()
+            }
+            if (filterpost != null) {
+                val postUrl = filterpost?.select(".entry-title-link")?.attr("href")
+                val postDoc = postUrl?.let { app.get(it, cacheTime = 60, timeout = 30).document }
+                val title = postDoc?.selectFirst(".entry-title")?.text() ?: ""
+                val qualityRegex2 = "(\\d{3,4})[pP]".toRegex()
+                if (title.lowercase().contains("season") && season != null) {
+                    val elements = postDoc?.selectFirst(".entry-content")
+                    val qualityRegex = ">(\\d{3,4}p).*<".toRegex()
+                    val seasonRegex = "(\\d)-(\\d)"
+                    val isMultiSeason = seasonRegex.toRegex().containsMatchIn(title)
+                    var startSeason: Int? = 1
+                    var endSeason: Int? = 1
+                    if (isMultiSeason) {
+                        startSeason = seasonRegex.toRegex().find(title)?.groups?.get(1)?.value?.toInt()
+                        endSeason = seasonRegex.toRegex().find(title)?.groups?.get(2)?.value?.toInt()
+                    }
+                    if (startSeason != null && endSeason != null) {
+                        val seasonList = mutableListOf<SeasonDetail>()
+                        for (i in startSeason..endSeason) {
+                            if (elements != null) {
+                                for (j in 0..<elements.children().size) {
+                                    val item = elements.children().get(j)
+                                    val currentSeason = "Season $i"
                                     if (item.tagName() == "h3" && (qualityRegex.containsMatchIn(item.html()) || qualityRegex2.containsMatchIn(
                                             item.html()
                                         ))
                                     ) {
-
                                         if (item.text().lowercase()
                                                 .contains(currentSeason.lowercase())
                                         ) {
@@ -4706,7 +4829,6 @@ suspend fun invokeFlixAPIHQ(
                                                     }
                                                 }
                                             }
-
                                             seasonList.add(
                                                 SeasonDetail(
                                                     quality,
@@ -4719,51 +4841,45 @@ suspend fun invokeFlixAPIHQ(
                                 }
                             }
                         }
-                    }
-
-                    val seasonListFilter = seasonList.filter { Season ->
-                        Season.season == "Season $season"
-                    }
-                    val episodeMap = mutableMapOf<String, MutableList<String>>()
-                    seasonListFilter.forEach { item ->
-                        val episodeList = item.episodeLinkMap
-                        if (episodeList != null) {
-                            for ((k, v) in episodeList) {
-                                if (!episodeMap[k].isNullOrEmpty()) {
-                                    episodeMap[k]?.addAll(v)
-                                } else {
-                                    episodeMap[k] = v
+                        val seasonListFilter = seasonList.filter { Season ->
+                            Season.season == "Season $season"
+                        }
+                        val episodeMap = mutableMapOf<String, MutableList<String>>()
+                        seasonListFilter.forEach { item ->
+                            val episodeList = item.episodeLinkMap
+                            if (episodeList != null) {
+                                for ((k, v) in episodeList) {
+                                    if (!episodeMap[k].isNullOrEmpty()) {
+                                        episodeMap[k]?.addAll(v)
+                                    } else {
+                                        episodeMap[k] = v
+                                    }
                                 }
+
                             }
-
+                        }
+                        for ((k, v) in episodeMap) {
+                            val episodeNo = "([E|e]pisode\\s*(\\d{1,3}))".toRegex()
+                                .find(k)?.groups?.get(2)?.value.toString().toInt()
+                            if (episodeNo == episode) {
+                                loadHindMoviezLinks(v.joinToString("+"), callback)
+                            }
                         }
                     }
+                } else {
+                    val elements = postDoc?.selectFirst(".entry-content")
+                    val qualityRegex = ">(\\d{3,4}p).*<".toRegex()
+                    val movieLinksList = mutableListOf<String>()
+                    if (elements != null) {
+                        for (j in 0..(elements.children().size - 1)) {
 
-                    for ((k, v) in episodeMap) {
-                        val episodeNo = "([E|e]pisode\\s*(\\d{1,3}))".toRegex()
-                            .find(k)?.groups?.get(2)?.value.toString().toInt()
-                        if (episodeNo == episode) {
-                            loadHindMoviezLinks(v.joinToString("+"), callback)
-                        }
-                    }
-                }
-            } else {
-                val elements = postDoc?.selectFirst(".entry-content")
-                val qualityRegex = ">(\\d{3,4}p).*<".toRegex()
-                val movieLinksList = mutableListOf<String>()
-                if (elements != null) {
-                    for (j in 0..(elements.children().size - 1)) {
-
-                        val item = elements?.children()?.get(j)
-                        if (item != null) {
-                            if (item.tagName() == "h3" && (qualityRegex.containsMatchIn(item.html()) || qualityRegex2.containsMatchIn(
-                                    item.html()
-                                ))
-                            ) {
-                                val movieUrls = item.nextElementSibling()?.select("a")
-
-                                if (movieUrls != null) {
-                                    movieUrls.forEach { item ->
+                            val item = elements?.children()?.get(j)
+                            if (item != null) {
+                                if (item.tagName() == "h3" && (qualityRegex.containsMatchIn(item.html()) || qualityRegex2.containsMatchIn(
+                                        item.html()
+                                    ))
+                                ) {
+                                    item.nextElementSibling()?.select("a")?.forEach { item ->
                                         val episodeUrl =
                                             if (item.attr("href").contains("href.li")) {
                                                 item.attr("href").substringAfter("/?")
@@ -4787,18 +4903,16 @@ suspend fun invokeFlixAPIHQ(
                             }
                         }
                     }
+                    loadHindMoviezLinks(movieLinksList.joinToString("+"), callback)
                 }
-                loadHindMoviezLinks(movieLinksList.joinToString("+"), callback)
             }
-
         } catch (e: Exception) {
-            TODO("Not yet implemented")
+            println("Error: No Links found for HindMoviezLinks")
         }
-
-
     }
 
     suspend fun invokeSuperstream(
+        token: String? = null,
         imdbId: String? = null,
         season: Int? = null,
         episode: Int? = null,
@@ -4812,7 +4926,36 @@ suspend fun invokeFlixAPIHQ(
                 ?.substringAfterLast("/")?.toIntOrNull()
         }
         mediaId?.let {
-            invokeExternalSource(it, if (season == null) 1 else 2, season, episode, callback)
+            invokeExternalSource(it, if (season == null) 1 else 2, season, episode, callback,token)
+        }
+    }
+
+    suspend fun invokeUira(
+        imdbId: String? = null,
+        season: Int? = null,
+        episode: Int? = null,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        val sources = listOf("embedsu","vidsrcsu","flixhq","vidapi","soapertv","4k","flicky","vidsrcvip","viet","catflix")
+        for(source in sources)
+        {
+            try {
+                val url = if(season == null) {"$UiraApi/$source/$imdbId"} else {"$UiraApi/$source/$imdbId?s=$season&e=$episode"}
+                val response = app.get(url, timeout = 10).parsedSafe<UiraResponse>()
+                if (response != null) {
+                    val sourceTxt = response?.sourceId?.split("_")?.joinToString(" ") { word -> word.replaceFirstChar { it.uppercaseChar() } }
+                    callback.invoke(
+                        ExtractorLink(
+                            "Uira [${sourceTxt}]",
+                            "Uira [${sourceTxt}]",
+                            response?.stream?.playlist.toString(),
+                            "",
+                            Qualities.P1080.value,
+                            ExtractorLinkType.M3U8
+                        )
+                    )
+                }
+            } catch (e: Exception) {}
         }
     }
 

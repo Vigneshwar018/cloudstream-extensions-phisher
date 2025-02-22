@@ -1,5 +1,7 @@
 package com.Phisher98
 
+import com.Phisher98.StreamPlayExtractor.invokeSubtitleAPI
+import com.Phisher98.StreamPlayExtractor.invokeWyZIESUBAPI
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.TvType
 import com.lagradost.cloudstream3.amap
@@ -22,6 +24,10 @@ class StreamPlayTorrent() : StreamPlay() {
         const val TorrentmovieAPI="https://torrentmovie.net"
         const val OnethreethreesevenxAPI="https://1337x.to"
         const val TorBoxAPI="https://stremio.torbox.app"
+        const val BitsearchApi="https://bitsearch.to"
+        const val MediafusionApi="https://mediafusion.elfhosted.com"
+        const val ThePirateBayApi="https://thepiratebay-plus.strem.fun"
+        const val PeerflixApi="https://peerflix.mov"
         const val TRACKER_LIST_URL="https://raw.githubusercontent.com/ngosang/trackerslist/refs/heads/master/trackers_all.txt"
 
     }
@@ -83,6 +89,61 @@ override suspend fun loadLinks(
             )
 
         },
+        {
+            invokeBitsearch(
+                BitsearchApi,
+                title,
+                season,
+                episode,
+                callback
+            )
+
+        },
+        {
+            invokeMediaFusion(
+                MediafusionApi,
+                id,
+                season,
+                episode,
+                callback
+            )
+
+        },
+        {
+            invokeThepiratebay(
+                ThePirateBayApi,
+                id,
+                season,
+                episode,
+                callback
+            )
+
+        },
+        {
+            invokePeerFlix(
+                PeerflixApi,
+                id,
+                season,
+                episode,
+                callback
+            )
+        },
+
+
+
+
+
+
+
+        //Subtitles Invokes
+        {
+            invokeWyZIESUBAPI(
+                id,
+                season,
+                episode,
+                subtitleCallback,
+            )
+        }
     )
     val SubAPI="https://opensubtitles-v3.strem.io"
     val url = if(season == null) {
@@ -96,7 +157,7 @@ override suspend fun loadLinks(
         "User-Agent" to "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
     )
     app.get(url, headers = headers, timeout = 100L).parsedSafe<Subtitles>()?.subtitles?.amap {
-        val lan=getLanguage(it.lang)
+        val lan=getLanguage(it.lang) ?:"Unknown"
         val suburl=it.url
         subtitleCallback.invoke(
             SubtitleFile(
@@ -120,6 +181,20 @@ suspend fun generateMagnetLink(url: String, hash: String?): String {
         trackerList.forEach { tracker ->
             if (tracker.isNotBlank()) {
                 append("&tr=").append(tracker.trim())
+            }
+        }
+    }
+}
+
+suspend fun generateMagnetLinkFromSource(trackersList: List<String>, hash: String?): String {
+    // Fetch the content of the file from the provided URL
+
+    // Build the magnet link
+    return buildString {
+        append("magnet:?xt=urn:btih:$hash")
+        for (index in 0 until trackersList.size - 1) {
+            if (trackersList[index].isNotBlank()) {
+                append("&tr=").append(trackersList[index].trim())
             }
         }
     }

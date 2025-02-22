@@ -2,8 +2,12 @@
 
 import org.jetbrains.kotlin.konan.properties.Properties
 
-version = 159
+version = 176
 android {
+    buildFeatures {
+        buildConfig = true
+        viewBinding = true
+    }
     defaultConfig {
         val properties = Properties()
         properties.load(project.rootProject.file("local.properties").inputStream())
@@ -35,6 +39,7 @@ android {
         buildConfigField("String", "KisskhSub", "\"${properties.getProperty("KisskhSub")}\"")
         buildConfigField("String", "SUPERSTREAM_THIRD_API", "\"${properties.getProperty("SUPERSTREAM_THIRD_API")}\"")
         buildConfigField("String", "SUPERSTREAM_FOURTH_API", "\"${properties.getProperty("SUPERSTREAM_FOURTH_API")}\"")
+        buildConfigField("String", "SUPERSTREAM_FIRST_API", "\"${properties.getProperty("SUPERSTREAM_FIRST_API")}\"")
 
     }
 }
@@ -44,7 +49,7 @@ cloudstream {
     // All of these properties are optional, you can safely remove them
 
      description = "#1 best extention based on MultiAPI"
-     authors = listOf("Phisher98", "Hexated")
+     authors = listOf("Phisher98", "Hexated","salman731")
 
     /**
      * Status int as the following:
@@ -65,11 +70,15 @@ cloudstream {
 
     iconUrl = "https://i3.wp.com/yt3.googleusercontent.com/ytc/AIdro_nCBArSmvOc6o-k2hTYpLtQMPrKqGtAw_nC20rxm70akA=s900-c-k-c0x00ffffff-no-rj?ssl=1"
 
+    requiresResources = true
     isCrossPlatform = false
+
 }
 
 dependencies {
     // FIXME remove this when crossplatform is fully supported
     val cloudstream by configurations
+    implementation("com.google.android.material:material:1.12.0")
+    implementation("androidx.browser:browser:1.8.0")
     cloudstream("com.lagradost:cloudstream3:pre-release")
 }

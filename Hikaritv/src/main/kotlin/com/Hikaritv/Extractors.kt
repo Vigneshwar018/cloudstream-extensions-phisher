@@ -4,7 +4,6 @@ import com.lagradost.api.Log
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.USER_AGENT
 import com.lagradost.cloudstream3.app
-import com.lagradost.cloudstream3.base64DecodeArray
 import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.INFER_TYPE
@@ -41,18 +40,23 @@ open class Chillx : ExtractorApi() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
+        val headers = mapOf(
+            "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "Accept-Language" to "en-US,en;q=0.9",
+        )
+
         try {
             // Fetch the raw response from the URL
-            val res = app.get(url).toString()
+            val res = app.get(url,referer=mainUrl,headers=headers).toString()
 
-            // Extract the encoded string using regex
             val encodedString = Regex("const\\s+\\w+\\s*=\\s*'(.*?)'").find(res)?.groupValues?.get(1) ?: ""
             if (encodedString.isEmpty()) {
                 throw Exception("Encoded string not found")
             }
+
             // Decrypt the encoded string
-            val password = "~%aRg@&H3&QEK1QV"
-            val decryptedData = decryptXOR(encodedString, password)
+            val password = "CbrP~To{lEc1i$,+"
+            val decryptedData = rc4Decrypt(password, hexToBytes(encodedString))
             // Extract the m3u8 URL from decrypted data
             val m3u8 = Regex("\"?file\"?:\\s*\"([^\"]+)").find(decryptedData)?.groupValues?.get(1)?.trim() ?: ""
             if (m3u8.isEmpty()) {
@@ -104,23 +108,33 @@ open class Chillx : ExtractorApi() {
         }.toList()
     }
 
-    private fun decryptXOR(encryptedData: String, password: String): String {
-        return try {
-            val decodedBytes = base64DecodeArray(encryptedData)
-            val keyBytes = decodedBytes.sliceArray(0 until 16)
-            val dataBytes = decodedBytes.sliceArray(16 until decodedBytes.size)
-            val passwordBytes = password.toByteArray(Charsets.UTF_8)
-
-            val decryptedBytes = dataBytes.mapIndexed { i, byte ->
-                byte.toInt() xor passwordBytes[i % passwordBytes.size].toInt() xor keyBytes[i % keyBytes.size].toInt()
-            }.map { it.toByte() }.toByteArray()
-
-            String(decryptedBytes, Charsets.UTF_8)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            "Decryption Failed"
-        }
+    private fun hexToBytes(hex: String): ByteArray {
+        return ByteArray(hex.length / 2) { i -> hex.substring(2 * i, 2 * i + 2).toInt(16).toByte() }
     }
+
+    private fun rc4Decrypt(key: String, encryptedData: ByteArray): String {
+        val s = IntArray(256) { it }
+        var j = 0
+        for (i in 0 until 256) {
+            j = (j + s[i] + key[i % key.length].code) % 256
+            s[i] = s[j].also { s[j] = s[i] }
+        }
+
+        var i = 0
+        j = 0
+        val decryptedData = ByteArray(encryptedData.size)
+        for (index in encryptedData.indices) {
+            i = (i + 1) % 256
+            j = (j + s[i]) % 256
+            s[i] = s[j].also { s[j] = s[i] }
+            val k = s[(s[i] + s[j]) % 256]
+            decryptedData[index] = (encryptedData[index].toInt() xor k).toByte()
+        }
+
+        return String(decryptedData)
+    }
+
+
 }
 
 class FilemoonV2 : ExtractorApi() {

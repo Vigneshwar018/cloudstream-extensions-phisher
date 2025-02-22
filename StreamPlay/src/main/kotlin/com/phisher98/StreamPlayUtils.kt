@@ -1,5 +1,6 @@
 package com.Phisher98
 
+import android.annotation.SuppressLint
 import app.cash.quickjs.QuickJs
 import com.Phisher98.DumpUtils.queryApi
 import com.Phisher98.StreamPlay.Companion.anilistAPI
@@ -1249,10 +1250,6 @@ fun String?.createSlug(): String? {
         ?.lowercase()
 }
 
-fun getLanguage(str: String): String {
-    return if (str.contains("(in_ID)")) "Indonesian" else str
-}
-
 fun bytesToGigaBytes(number: Double): Double = number / 1024000000
 
 fun getKisskhTitle(str: String?): String? {
@@ -1906,7 +1903,6 @@ suspend fun loadHindMoviezLinks(
                 else if (item.attr("href").contains("gdirect.cloud"))
                 {
                     val doc = app.get(item.attr("href"), timeout = 30, allowRedirects = true, referer = "https://hindshare.site/").document
-                    android.util.Log.d("salman731 html",doc.html())
                     val link = doc.select("a")
                     callback.invoke(ExtractorLink(
                         "HindMoviez [GDirect]",
@@ -1957,25 +1953,27 @@ object Deobfuscator {
     }
 }
 
+
 suspend fun invokeExternalSource(
     mediaId: Int? = null,
     type: Int? = null,
     season: Int? = null,
     episode: Int? = null,
     callback: (ExtractorLink) -> Unit,
+    token:String? =null,
 ) {
-    val thirdAPI= thrirdAPI
-    val fourthAPI=fourthAPI
+    val thirdAPI = thrirdAPI
+    val fourthAPI = fourthAPI
     val (seasonSlug, episodeSlug) = getEpisodeSlug(season, episode)
     val headers = mapOf("Accept-Language" to "en")
-    val shareKey = app.get("$fourthAPI/index/share_link?id=${mediaId}&type=$type",headers=headers)
+    val shareKey = app.get("$fourthAPI/index/share_link?id=${mediaId}&type=$type", headers = headers)
         .parsedSafe<ER>()?.data?.link?.substringAfterLast("/") ?: return
 
     val shareRes = app.get("$thirdAPI/file/file_share_list?share_key=$shareKey", headers = headers)
         .parsedSafe<ExternalResponse>()?.data ?: return
 
     val fids = if (season == null) {
-        shareRes.fileList // Updated from `file_list`
+        shareRes.fileList
     } else {
         shareRes.fileList?.find { it.fileName.equals("season $season", true) }?.fid?.let { parentId ->
             app.get("$thirdAPI/file/file_share_list?share_key=$shareKey&parent_id=$parentId&page=1", headers = headers)
@@ -1984,13 +1982,25 @@ suspend fun invokeExternalSource(
                 }
         }
     } ?: return
+
     fids.apmapIndexed { index, fileList ->
-        val token= base64Decode("dWk9ZXlKMGVYQWlPaUpLVjFRaUxDSmhiR2NpT2lKSVV6STFOaUo5LmV5SnBZWFFpT2pFM016azBOelF3TURRc0ltNWlaaUk2TVRjek9UUTNOREF3TkN3aVpYaHdJam94Tnpjd05UYzRNREkwTENKa1lYUmhJanA3SW5WcFpDSTZOak0wTURjMExDSjBiMnRsYmlJNklqQTFNekl5WmpOalpHVTROamcyWVRkak1EVTNaRGcyTXpsak56STBZMkkxSW4xOS5oZHdBU1paSVh4UzF0ZTZMWXZ0WmVUTUpuWU9TN3EtNXhiWUtuenlRbW04")
-        val player = app.get("$thirdAPI/console/video_quality_list?fid=${fileList.fid}&share_key=$shareKey", headers = mapOf("Cookie" to token)).text
-        val json = JSONObject(player)
-        val htmlContent = json.getString("html")
+        val superToken = token ?: ""
+        Log.d("Phisher", superToken)
+
+        val player = app.get("$thirdAPI/console/video_quality_list?fid=${fileList.fid}&share_key=$shareKey", headers = mapOf("Cookie" to superToken)).text
+
+        val json = try {
+            JSONObject(player)
+        } catch (e: Exception) {
+            Log.e("Phisher", "Invalid JSON response $e")
+            return@apmapIndexed
+        }
+        val htmlContent = json.optString("html", "")
+        if (htmlContent.isEmpty()) return@apmapIndexed
+
         val document: Document = Jsoup.parse(htmlContent)
         val sourcesWithQualities = mutableListOf<Pair<String, String>>()
+
         document.select("div.file_quality").forEach {
             val url = it.attr("data-url").takeIf { it.isNotEmpty() }
             val quality = it.attr("data-quality").takeIf { it.isNotEmpty() }?.let { if (it == "ORG") "2160p" else it }
@@ -2004,7 +2014,7 @@ suspend fun invokeExternalSource(
                 put(JSONObject().apply {
                     put("file", url)
                     put("label", quality)
-                    put("type", "video/mp4") // Modify this if needed
+                    put("type", "video/mp4")
                 })
             }
         }
@@ -2015,11 +2025,12 @@ suspend fun invokeExternalSource(
                 val format = if (source.type == "video/mp4") ExtractorLinkType.VIDEO else ExtractorLinkType.M3U8
                 val label = if (format == ExtractorLinkType.M3U8) "Hls" else "Mp4"
                 if (!(source.label == "AUTO" || format == ExtractorLinkType.VIDEO)) return@org
+
                 callback.invoke(
                     ExtractorLink(
                         "SuperStream",
                         "SuperStream [Server ${index + 1}]",
-                        (source.file)?.replace("\\/", "/") ?: return@org,
+                        source.file?.replace("\\/", "/") ?: return@org,
                         "",
                         getIndexQuality(if (format == ExtractorLinkType.M3U8) fileList.fileName else source.label),
                         type = format,
@@ -2029,3 +2040,359 @@ suspend fun invokeExternalSource(
         }
     }
 }
+
+fun parseJsonToEpisodes(json: String): List<EpisoderesponseKAA> {
+    val gson = Gson()
+    data class Response(val result: List<EpisoderesponseKAA>)
+    val response = gson.fromJson(json, Response::class.java)
+    return response.result
+}
+
+
+
+fun getSignature(
+    html: String,
+    server: String,
+    query: String,
+    key: ByteArray
+): Triple<String, String, String>? {
+    // Define the order based on the server type
+    val headers= mapOf("User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+    val order = when (server) {
+        "VidStreaming", "DuckStream" -> listOf("IP", "USERAGENT", "ROUTE", "MID", "TIMESTAMP", "KEY")
+        "BirdStream" -> listOf("IP", "USERAGENT", "ROUTE", "MID", "KEY")
+        else -> return null
+    }
+
+    // Parse the HTML using Jsoup
+    val document = Jsoup.parse(html)
+    val cidRaw = document.select("script:containsData(cid:)").firstOrNull()
+        ?.html()?.substringAfter("cid: '")?.substringBefore("'")?.decodeHex()
+        ?: return null
+    val cid = String(cidRaw).split("|")
+
+    // Generate timestamp
+    val timeStamp = (System.currentTimeMillis() / 1000 + 60).toString()
+
+    // Update route
+    val route = cid[1].replace("player.php", "source.php")
+
+    val signature = buildString {
+        order.forEach {
+            when (it) {
+                "IP" -> append(cid[0])
+                "USERAGENT" -> append(headers["User-Agent"] ?: "")
+                "ROUTE" -> append(route)
+                "MID" -> append(query)
+                "TIMESTAMP" -> append(timeStamp)
+                "KEY" -> append(String(key))
+                "SIG" -> append(html.substringAfter("signature: '").substringBefore("'"))
+                else -> {}
+            }
+        }
+    }
+    // Compute SHA-1 hash of the signature
+    return Triple(sha1sum(signature), timeStamp, route)
+}
+
+// Helper function to decode a hexadecimal string
+
+private fun sha1sum(value: String): String {
+    return try {
+        val md = MessageDigest.getInstance("SHA-1")
+        val bytes = md.digest(value.toByteArray())
+        bytes.joinToString("") { "%02x".format(it) }
+    } catch (e: Exception) {
+        throw Exception("Attempt to create the signature failed miserably.")
+    }
+}
+
+fun String.decodeHex(): ByteArray {
+    check(length % 2 == 0) { "Must have an even length" }
+    return chunked(2)
+        .map { it.toInt(16).toByte() }
+        .toByteArray()
+}
+
+
+object CryptoAES {
+
+    private const val KEY_SIZE = 32 // 256 bits
+    private const val IV_SIZE = 16 // 128 bits
+    private const val SALT_SIZE = 8 // 64 bits
+    private const val HASH_CIPHER = "AES/CBC/PKCS7PADDING"
+    private const val HASH_CIPHER_FALLBACK = "AES/CBC/PKCS5PADDING"
+    private const val AES = "AES"
+    private const val KDF_DIGEST = "MD5"
+
+    /**
+     * Decrypt using CryptoJS defaults compatible method.
+     * Uses KDF equivalent to OpenSSL's EVP_BytesToKey function
+     *
+     * http://stackoverflow.com/a/29152379/4405051
+     * @param cipherText base64 encoded ciphertext
+     * @param password passphrase
+     */
+    fun decrypt(cipherText: String, password: String): String {
+        return try {
+            val ctBytes = base64DecodeArray(cipherText)
+            val saltBytes = Arrays.copyOfRange(ctBytes, SALT_SIZE, IV_SIZE)
+            val cipherTextBytes = Arrays.copyOfRange(ctBytes, IV_SIZE, ctBytes.size)
+            val md5 = MessageDigest.getInstance("MD5")
+            val keyAndIV = generateKeyAndIV(KEY_SIZE, IV_SIZE, 1, saltBytes, password.toByteArray(Charsets.UTF_8), md5)
+            decryptAES(
+                cipherTextBytes,
+                keyAndIV?.get(0) ?: ByteArray(KEY_SIZE),
+                keyAndIV?.get(1) ?: ByteArray(IV_SIZE),
+            )
+        } catch (e: Exception) {
+            ""
+        }
+    }
+
+    fun decryptWithSalt(cipherText: String, salt: String, password: String): String {
+        return try {
+            val ctBytes = base64DecodeArray(cipherText)
+            val md5: MessageDigest = MessageDigest.getInstance("MD5")
+            val keyAndIV = generateKeyAndIV(
+                KEY_SIZE,
+                IV_SIZE,
+                1,
+                salt.decodeHex(),
+                password.toByteArray(Charsets.UTF_8),
+                md5,
+            )
+            decryptAES(
+                ctBytes,
+                keyAndIV?.get(0) ?: ByteArray(KEY_SIZE),
+                keyAndIV?.get(1) ?: ByteArray(IV_SIZE),
+            )
+        } catch (e: Exception) {
+            ""
+        }
+    }
+
+    /**
+     * Decrypt using CryptoJS defaults compatible method.
+     *
+     * @param cipherText base64 encoded ciphertext
+     * @param keyBytes key as a bytearray
+     * @param ivBytes iv as a bytearray
+     */
+    fun decrypt(cipherText: String, keyBytes: ByteArray, ivBytes: ByteArray): String {
+        return try {
+            val cipherTextBytes = base64DecodeArray(cipherText)
+            decryptAES(cipherTextBytes, keyBytes, ivBytes)
+        } catch (e: Exception) {
+            ""
+        }
+    }
+
+    /**
+     * Encrypt using CryptoJS defaults compatible method.
+     *
+     * @param plainText plaintext
+     * @param keyBytes key as a bytearray
+     * @param ivBytes iv as a bytearray
+     */
+    fun encrypt(plainText: String, keyBytes: ByteArray, ivBytes: ByteArray): String {
+        return try {
+            val cipherTextBytes = plainText.toByteArray()
+            encryptAES(cipherTextBytes, keyBytes, ivBytes)
+        } catch (e: Exception) {
+            ""
+        }
+    }
+
+    /**
+     * Decrypt using CryptoJS defaults compatible method.
+     *
+     * @param cipherTextBytes encrypted text as a bytearray
+     * @param keyBytes key as a bytearray
+     * @param ivBytes iv as a bytearray
+     */
+    private fun decryptAES(cipherTextBytes: ByteArray, keyBytes: ByteArray, ivBytes: ByteArray): String {
+        return try {
+            val cipher = try {
+                Cipher.getInstance(HASH_CIPHER)
+            } catch (e: Throwable) { Cipher.getInstance(HASH_CIPHER_FALLBACK) }
+            val keyS = SecretKeySpec(keyBytes, AES)
+            cipher.init(Cipher.DECRYPT_MODE, keyS, IvParameterSpec(ivBytes))
+            cipher.doFinal(cipherTextBytes).toString(Charsets.UTF_8)
+        } catch (e: Exception) {
+            ""
+        }
+    }
+
+    /**
+     * Encrypt using CryptoJS defaults compatible method.
+     *
+     * @param plainTextBytes encrypted text as a bytearray
+     * @param keyBytes key as a bytearray
+     * @param ivBytes iv as a bytearray
+     */
+    private fun encryptAES(plainTextBytes: ByteArray, keyBytes: ByteArray, ivBytes: ByteArray): String {
+        return try {
+            val cipher = try {
+                Cipher.getInstance(HASH_CIPHER)
+            } catch (e: Throwable) { Cipher.getInstance(HASH_CIPHER_FALLBACK) }
+            val keyS = SecretKeySpec(keyBytes, AES)
+            cipher.init(Cipher.ENCRYPT_MODE, keyS, IvParameterSpec(ivBytes))
+            base64Encode(cipher.doFinal(plainTextBytes))
+        } catch (e: Exception) {
+            ""
+        }
+    }
+
+    /**
+     * Generates a key and an initialization vector (IV) with the given salt and password.
+     *
+     * https://stackoverflow.com/a/41434590
+     * This method is equivalent to OpenSSL's EVP_BytesToKey function
+     * (see https://github.com/openssl/openssl/blob/master/crypto/evp/evp_key.c).
+     * By default, OpenSSL uses a single iteration, MD5 as the algorithm and UTF-8 encoded password data.
+     *
+     * @param keyLength the length of the generated key (in bytes)
+     * @param ivLength the length of the generated IV (in bytes)
+     * @param iterations the number of digestion rounds
+     * @param salt the salt data (8 bytes of data or `null`)
+     * @param password the password data (optional)
+     * @param md the message digest algorithm to use
+     * @return an two-element array with the generated key and IV
+     */
+    private fun generateKeyAndIV(
+        keyLength: Int,
+        ivLength: Int,
+        iterations: Int,
+        salt: ByteArray,
+        password: ByteArray,
+        md: MessageDigest,
+    ): Array<ByteArray?>? {
+        val digestLength = md.digestLength
+        val requiredLength = (keyLength + ivLength + digestLength - 1) / digestLength * digestLength
+        val generatedData = ByteArray(requiredLength)
+        var generatedLength = 0
+        return try {
+            md.reset()
+
+            // Repeat process until sufficient data has been generated
+            while (generatedLength < keyLength + ivLength) {
+                // Digest data (last digest if available, password data, salt if available)
+                if (generatedLength > 0) md.update(generatedData, generatedLength - digestLength, digestLength)
+                md.update(password)
+                md.update(salt, 0, SALT_SIZE)
+                md.digest(generatedData, generatedLength, digestLength)
+
+                // additional rounds
+                for (i in 1 until iterations) {
+                    md.update(generatedData, generatedLength, digestLength)
+                    md.digest(generatedData, generatedLength, digestLength)
+                }
+                generatedLength += digestLength
+            }
+
+            // Copy key and IV into separate byte arrays
+            val result = arrayOfNulls<ByteArray>(2)
+            result[0] = generatedData.copyOfRange(0, keyLength)
+            if (ivLength > 0) result[1] = generatedData.copyOfRange(keyLength, keyLength + ivLength)
+            result
+        } catch (e: Exception) {
+            throw e
+        } finally {
+            // Clean out temporary data
+            Arrays.fill(generatedData, 0.toByte())
+        }
+    }
+
+    // Stolen from AnimixPlay(EN) / GogoCdnExtractor
+    private fun String.decodeHex(): ByteArray {
+        check(length % 2 == 0) { "Must have an even length" }
+        return chunked(2)
+            .map { it.toInt(16).toByte() }
+            .toByteArray()
+    }
+}
+
+
+val languageMap = mapOf(
+    "Afrikaans" to Pair("af", "afr"),
+    "Albanian" to Pair("sq", "sqi"),
+    "Amharic" to Pair("am", "amh"),
+    "Arabic" to Pair("ar", "ara"),
+    "Armenian" to Pair("hy", "hye"),
+    "Azerbaijani" to Pair("az", "aze"),
+    "Basque" to Pair("eu", "eus"),
+    "Belarusian" to Pair("be", "bel"),
+    "Bengali" to Pair("bn", "ben"),
+    "Bosnian" to Pair("bs", "bos"),
+    "Bulgarian" to Pair("bg", "bul"),
+    "Catalan" to Pair("ca", "cat"),
+    "Chinese" to Pair("zh", "zho"),
+    "Croatian" to Pair("hr", "hrv"),
+    "Czech" to Pair("cs", "ces"),
+    "Danish" to Pair("da", "dan"),
+    "Dutch" to Pair("nl", "nld"),
+    "English" to Pair("en", "eng"),
+    "Estonian" to Pair("et", "est"),
+    "Filipino" to Pair("tl", "tgl"),
+    "Finnish" to Pair("fi", "fin"),
+    "French" to Pair("fr", "fra"),
+    "Galician" to Pair("gl", "glg"),
+    "Georgian" to Pair("ka", "kat"),
+    "German" to Pair("de", "deu"),
+    "Greek" to Pair("el", "ell"),
+    "Gujarati" to Pair("gu", "guj"),
+    "Hebrew" to Pair("he", "heb"),
+    "Hindi" to Pair("hi", "hin"),
+    "Hungarian" to Pair("hu", "hun"),
+    "Icelandic" to Pair("is", "isl"),
+    "Indonesian" to Pair("id", "ind"),
+    "Italian" to Pair("it", "ita"),
+    "Japanese" to Pair("ja", "jpn"),
+    "Kannada" to Pair("kn", "kan"),
+    "Kazakh" to Pair("kk", "kaz"),
+    "Korean" to Pair("ko", "kor"),
+    "Latvian" to Pair("lv", "lav"),
+    "Lithuanian" to Pair("lt", "lit"),
+    "Macedonian" to Pair("mk", "mkd"),
+    "Malay" to Pair("ms", "msa"),
+    "Malayalam" to Pair("ml", "mal"),
+    "Maltese" to Pair("mt", "mlt"),
+    "Marathi" to Pair("mr", "mar"),
+    "Mongolian" to Pair("mn", "mon"),
+    "Nepali" to Pair("ne", "nep"),
+    "Norwegian" to Pair("no", "nor"),
+    "Persian" to Pair("fa", "fas"),
+    "Polish" to Pair("pl", "pol"),
+    "Portuguese" to Pair("pt", "por"),
+    "Punjabi" to Pair("pa", "pan"),
+    "Romanian" to Pair("ro", "ron"),
+    "Russian" to Pair("ru", "rus"),
+    "Serbian" to Pair("sr", "srp"),
+    "Sinhala" to Pair("si", "sin"),
+    "Slovak" to Pair("sk", "slk"),
+    "Slovenian" to Pair("sl", "slv"),
+    "Spanish" to Pair("es", "spa"),
+    "Swahili" to Pair("sw", "swa"),
+    "Swedish" to Pair("sv", "swe"),
+    "Tamil" to Pair("ta", "tam"),
+    "Telugu" to Pair("te", "tel"),
+    "Thai" to Pair("th", "tha"),
+    "Turkish" to Pair("tr", "tur"),
+    "Ukrainian" to Pair("uk", "ukr"),
+    "Urdu" to Pair("ur", "urd"),
+    "Uzbek" to Pair("uz", "uzb"),
+    "Vietnamese" to Pair("vi", "vie"),
+    "Welsh" to Pair("cy", "cym"),
+    "Yiddish" to Pair("yi", "yid")
+)
+
+fun getLanguage(language: String?): String? {
+    language ?: return null
+    val normalizedLang = language.substringBefore("-")
+    return languageMap.entries.find { it.value.first == normalizedLang || it.value.second == normalizedLang }?.key
+}
+
+
+
+
