@@ -11,7 +11,6 @@ import com.Phisher98.StreamPlay.Companion.gdbot
 import com.Phisher98.StreamPlay.Companion.hdmovies4uAPI
 import com.Phisher98.StreamPlay.Companion.malsyncAPI
 import com.Phisher98.StreamPlay.Companion.thrirdAPI
-import com.Phisher98.StreamPlay.Companion.tvMoviesAPI
 import com.google.gson.Gson
 import com.lagradost.api.Log
 import com.lagradost.cloudstream3.*
@@ -399,41 +398,6 @@ fun deobfstr(hash: String, index: String): String {
         result += (j.toInt(16) xor index[(i / 2) % index.length].code).toChar()
     }
     return result
-}
-
-suspend fun extractCovyn(url: String?): Pair<String?, String?>? {
-    val request = session.get(url ?: return null, referer = "${tvMoviesAPI}/")
-    val filehosting = session.baseClient.cookieJar.loadForRequest(url.toHttpUrl())
-        .find { it.name == "filehosting" }?.value
-    val headers = mapOf(
-        "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "Connection" to "keep-alive",
-        "Cookie" to "filehosting=$filehosting",
-    )
-
-    val iframe = request.document.findTvMoviesIframe()
-    delay(10500)
-    val request2 = session.get(
-        iframe ?: return null, referer = url, headers = headers
-    )
-
-    val iframe2 = request2.document.findTvMoviesIframe()
-    delay(10500)
-    val request3 = session.get(
-        iframe2 ?: return null, referer = iframe, headers = headers
-    )
-
-    val response = request3.document
-    val videoLink = response.selectFirst("button.btn.btn--primary")?.attr("onclick")
-        ?.substringAfter("location = '")?.substringBefore("';")?.let {
-            app.get(
-                it, referer = iframe2, headers = headers
-            ).url
-        }
-    val size = response.selectFirst("ul.row--list li:contains(Filesize) span:last-child")
-        ?.text()
-
-    return Pair(videoLink, size)
 }
 
 //EmbedSu
@@ -1249,6 +1213,14 @@ fun String?.createSlug(): String? {
         ?.replace("\\s+".toRegex(), "-")
         ?.lowercase()
 }
+
+fun String?.createPlayerSlug(): String? {
+    return this?.trim()
+        ?.lowercase()
+        ?.replace("[^a-z0-9\\s-]".toRegex(), "") // Remove special characters except spaces & hyphens
+        ?.replace("\\s+".toRegex(), "-") // Replace spaces with hyphens
+}
+
 
 fun bytesToGigaBytes(number: Double): Double = number / 1024000000
 
@@ -2392,6 +2364,61 @@ fun getLanguage(language: String?): String? {
     val normalizedLang = language.substringBefore("-")
     return languageMap.entries.find { it.value.first == normalizedLang || it.value.second == normalizedLang }?.key
 }
+
+suspend fun getPlayer4uUrl(
+    name: String,
+    selectedQuality: Int,
+    url: String,
+    referer: String?,
+    callback: (ExtractorLink) -> Unit
+) {
+    val response = app.get(url, referer = referer)
+    var script = getAndUnpack(response.text).takeIf { it.isNotEmpty() }
+        ?: response.document.selectFirst("script:containsData(sources:)")?.data()
+
+    if (script == null) {
+        val iframeUrl = Regex("""<iframe src="(.*?)"""").find(response.text)?.groupValues?.getOrNull(1) ?: return
+        val iframeResponse = app.get(iframeUrl, referer = null, headers = mapOf("Accept-Language" to "en-US,en;q=0.5"))
+        script = getAndUnpack(iframeResponse.text).takeIf { it.isNotEmpty() } ?: return
+    }
+
+    val m3u8 = Regex("file:\\s*\"(.*?m3u8.*?)\"").find(script)?.groupValues?.getOrNull(1).orEmpty()
+
+        callback.invoke(
+            ExtractorLink(
+                name,
+                name,
+                m3u8,
+                "",
+                selectedQuality,
+                ExtractorLinkType.M3U8
+            )
+        )
+
+}
+
+fun getPlayer4UQuality (quality :String) : Int
+{
+    return when (quality) {
+        "4K", "2160P" -> Qualities.P2160.value
+        "FHD", "1080P" -> Qualities.P1080.value
+        "HQ", "HD", "720P","DVDRIP","TVRIP","HDTC","PREDVD" -> Qualities.P720.value
+        "480P" -> Qualities.P480.value
+        "360P","CAM" -> Qualities.P360.value
+        "DS" -> Qualities.P144.value
+        "SD" -> Qualities.P480.value
+        "WEBRIP" -> Qualities.P720.value
+        "BLURAY", "BRRIP" -> Qualities.P1080.value
+        "HDRIP" -> Qualities.P1080.value
+        "TS" -> Qualities.P480.value
+        "R5" -> Qualities.P480.value
+        "SCR" -> Qualities.P480.value
+        "TC" -> Qualities.P480.value
+        else -> Qualities.Unknown.value
+    }
+}
+
+
 
 
 

@@ -3,7 +3,6 @@ package com.Animeowl
 import org.jsoup.nodes.Element
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
-import com.lagradost.api.Log
 import com.lagradost.cloudstream3.syncproviders.SyncIdName
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
@@ -12,7 +11,7 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.toRequestBody
 
 class Animeowl : MainAPI() {
-    override var mainUrl              = "https://animeowl.live"
+    override var mainUrl              = "https://animeowl.me"
     override var name                 = "Animeowl"
     override val hasMainPage          = true
     override var lang                 = "en"
@@ -21,9 +20,12 @@ class Animeowl : MainAPI() {
 
     override val mainPage = mainPageOf(
         "trending" to "Trending",
-        "genre/action" to "Action",
-        "genre/adventure" to "Adventure",
-        "type/movie" to "Movies"
+        "recent-episode/sub" to "Recently Updated SUB",
+        "recent-episode/dub" to "Recently Updated DUB",
+        "recent-episode/chinese" to "Recently Updated Chinese",
+        "type/movie" to "Movies",
+        "type/ova" to "OVA",
+        "type/special" to "Special",
     )
 
     override val supportedSyncNames = setOf(
@@ -51,8 +53,10 @@ class Animeowl : MainAPI() {
         val posterUrl = fixUrlNull(this.select("a.post-thumb img").attr("data-src"))
         val subCount =this.selectFirst("div.d-flex div.bg-pink span")?.text()?.toIntOrNull()
         val dubCount =this.selectFirst("div.d-flex div.bg-purple span")?.text()?.toIntOrNull()
+        val twok=this.select("img.badge-2k")
         return newAnimeSearchResponse(title, href, TvType.Anime) {
             this.posterUrl = posterUrl
+            if (twok.isNotEmpty()) this.quality = SearchQuality.FourK
             addDubStatus(dubCount != null, subCount != null, dubCount, subCount)
         }
     }
@@ -118,7 +122,12 @@ class Animeowl : MainAPI() {
                         val href = info.select("a").attr("href")
                         val episode = info.attr("title")
                         val epno=episode.toIntOrNull()
-                        Episode(href, "Episode $episode",1,epno)
+                        newEpisode(href)
+                        {
+                            this.name="Episode $episode"
+                            this.season=1
+                            this.episode=epno
+                        }
             }
             val dubEpisodes=doc.select("#anime-cover-dub-content .episode-node").map { info->
                 val href = info.select("a").attr("href")
