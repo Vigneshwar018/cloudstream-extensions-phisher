@@ -10,7 +10,7 @@ import com.lagradost.cloudstream3.utils.*
 import org.jsoup.nodes.Element
 
 class TamilYogiProvider : MainAPI() { // all providers must be an instance of MainAPI
-    override var mainUrl = "https://1tamilyogi.date"
+    override var mainUrl = "https://1tamilyogi.actor"
     override var name = "TamilYogi"
     override val hasMainPage = true
     override var lang = "ta"
@@ -71,7 +71,7 @@ class TamilYogiProvider : MainAPI() { // all providers must be an instance of Ma
             }
         }?.let { url -> fixUrlNull(url) }
         Log.d("posterUrl", posterUrl.toString())
-        val qualityRegex = Regex("(?i)((DVDRip)|(HD)|(HQ)|(HDRip))")
+        val qualityRegex = Regex("(?i)((PRE)|(DVDRip)|(HD)|(HQ)|(HDRip))")
         val qualityN = qualityRegex.find(titleS)?.value.toString()
         //Log.d("QualityN", qualityN)
         val quality = getQualityFromString(qualityN)
@@ -106,7 +106,7 @@ class TamilYogiProvider : MainAPI() { // all providers must be an instance of Ma
         //Log.d("href", href)
         val posterUrl = fixUrlNull(this.selectFirst("img")?.attr("src"))
         Log.d("posterUrl", posterUrl.toString())
-        val qualityRegex = Regex("(?i)((DVDRip)|(HD)|(HQ)|(HDRip))")
+        val qualityRegex = Regex("(?i)((PRE)|(DVDRip)|(HD)|(HQ)|(HDRip))")
         val qualityN = qualityRegex.find(titleS)?.value.toString()
         //Log.d("QualityN", qualityN)
         val quality = getQualityFromString(qualityN)
