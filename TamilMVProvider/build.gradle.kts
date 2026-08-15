@@ -1,4 +1,4 @@
-version = 2
+version = 3
 
 cloudstream {
     description = "1TamilMV - Tamil Torrent Provider"

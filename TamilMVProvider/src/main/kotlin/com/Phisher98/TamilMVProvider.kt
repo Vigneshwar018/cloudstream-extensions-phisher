@@ -248,8 +248,11 @@ class TamilMVProvider : MainAPI() {
         if (magnetLinks.isEmpty()) return false
 
         magnetLinks.forEach { magnetElement ->
-            val magnetUrl = magnetElement.attr("href")
-            if (magnetUrl.isBlank()) return@forEach
+            val rawMagnetUrl = magnetElement.attr("href")
+            if (rawMagnetUrl.isBlank()) return@forEach
+
+            // Clean magnet link - keep only xt and tr params (like TorraStream does)
+            val magnetUrl = cleanMagnetLink(rawMagnetUrl)
 
             val qualityText = getQualityDescription(magnetElement)
             val quality = getQualityFromName(qualityText)
@@ -258,7 +261,7 @@ class TamilMVProvider : MainAPI() {
                 ExtractorLink(
                     source = name,
                     name = qualityText.ifBlank {
-                        Regex("dn=([^&]+)").find(magnetUrl)?.groupValues?.get(1)
+                        Regex("dn=([^&]+)").find(rawMagnetUrl)?.groupValues?.get(1)
                             ?.replace("+", " ")?.replace("%20", " ")
                             ?.replace("www.1TamilMV.ing - ", "")
                             ?: "Torrent"
@@ -272,6 +275,22 @@ class TamilMVProvider : MainAPI() {
         }
 
         return true
+    }
+
+    /**
+     * Clean magnet link to only keep xt and tr parameters.
+     * Removes dn (display name) and xl (exact length) which can cause issues.
+     */
+    private fun cleanMagnetLink(magnet: String): String {
+        val hash = Regex("xt=urn:btih:([a-fA-F0-9]+)").find(magnet)?.groupValues?.get(1) ?: return magnet
+        val trackers = Regex("[&?]tr=([^&]+)").findAll(magnet).map { it.groupValues[1] }.toList()
+
+        return buildString {
+            append("magnet:?xt=urn:btih:$hash")
+            trackers.forEach { tracker ->
+                append("&tr=$tracker")
+            }
+        }
     }
 
     private fun getQualityDescription(element: Element): String {
