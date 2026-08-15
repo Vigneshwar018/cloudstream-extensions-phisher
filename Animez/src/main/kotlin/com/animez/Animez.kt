@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION_ERROR")
 package com.animez
 
 import com.lagradost.cloudstream3.*

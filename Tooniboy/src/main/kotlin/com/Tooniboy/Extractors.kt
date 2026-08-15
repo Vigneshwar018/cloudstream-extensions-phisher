@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION_ERROR")
 package com.Tooniboy
 
 import com.google.gson.JsonElement

@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION_ERROR")
 package com.Funmovieslix
 
 import com.lagradost.api.Log

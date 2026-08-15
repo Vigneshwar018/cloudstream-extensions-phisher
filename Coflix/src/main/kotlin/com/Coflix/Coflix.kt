@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION_ERROR")
 package com.Coflix
 
 import com.lagradost.cloudstream3.*

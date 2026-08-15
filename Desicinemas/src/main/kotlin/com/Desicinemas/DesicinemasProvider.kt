@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION_ERROR")
 package com.Desicinemas
 
 import com.lagradost.cloudstream3.*

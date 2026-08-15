@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION_ERROR")
 package com.YTS
 
 import com.lagradost.api.Log

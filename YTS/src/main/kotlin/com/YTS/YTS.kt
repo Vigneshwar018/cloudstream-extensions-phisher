@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION_ERROR")
 package com.YTS
 
 import org.jsoup.nodes.Element

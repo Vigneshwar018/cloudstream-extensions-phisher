@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION_ERROR")
 package com.Animecloud
 
 import org.jsoup.nodes.Element

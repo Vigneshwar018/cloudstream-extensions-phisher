@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION_ERROR")
 package com.Toonstream
 
 import com.lagradost.cloudstream3.SubtitleFile

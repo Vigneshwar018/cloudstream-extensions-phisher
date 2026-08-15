@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION_ERROR")
 package com.hdhub4u
 
 import android.annotation.SuppressLint

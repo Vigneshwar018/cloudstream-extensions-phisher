@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION_ERROR")
 package com.PublicSportsIPTV
 
 import com.lagradost.cloudstream3.*

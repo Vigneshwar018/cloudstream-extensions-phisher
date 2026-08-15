@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION_ERROR")
 package com.ToonTales
 
 import org.jsoup.nodes.Element

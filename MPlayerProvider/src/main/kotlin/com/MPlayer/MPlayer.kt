@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION_ERROR")
 package com.MPlayer
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken

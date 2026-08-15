@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION_ERROR")
 package com.Desicinemas
 
 import com.fasterxml.jackson.core.json.JsonReadFeature

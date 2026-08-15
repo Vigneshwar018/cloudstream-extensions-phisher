@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION_ERROR")
 package com.Phisher98
 
 import com.lagradost.cloudstream3.*

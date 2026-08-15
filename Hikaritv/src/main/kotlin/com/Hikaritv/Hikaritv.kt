@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION_ERROR")
 package com.hikaritv
 
 import com.google.gson.Gson

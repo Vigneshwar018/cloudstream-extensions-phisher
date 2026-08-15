@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION_ERROR")
 package com.kickassanime
 
 import com.fasterxml.jackson.annotation.JsonProperty
