@@ -595,10 +595,7 @@ class doodre : DoodLaExtractor() {
     override var mainUrl = "https://dood.re"
 }
 
-class TravelR : GMPlayer() {
-    override val name = "TravelR"
-    override val mainUrl = "https://travel-russia.xyz"
-}
+
 
 class Mwish : Filesim() {
     override val name = "Mwish"

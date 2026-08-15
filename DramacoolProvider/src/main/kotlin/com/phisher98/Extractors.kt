@@ -19,10 +19,7 @@ class DramacoolExtractor : StreamWishExtractor() {
     override var mainUrl = "https://dramacool.men"
 }
 
-class AsianloadCFD : AsianLoad() {
-    override var name = "AsianLoad"
-    override var mainUrl = "https://asianload.cfd/"
-}
+
 
 class dhtpre : StreamWishExtractor() {
     override var name = "EarnVids"

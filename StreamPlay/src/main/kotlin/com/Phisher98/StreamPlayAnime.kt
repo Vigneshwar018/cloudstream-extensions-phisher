@@ -131,7 +131,7 @@ class StreamPlayAnime : MainAPI() {
                     false
                 )
             val homePageList =
-                api.getPersonalLibrary().allLibraryLists.mapNotNull {
+                api?.getPersonalLibrary()?.allLibraryLists?.mapNotNull {
                     if (it.items.isEmpty()) return@mapNotNull null
                     val libraryName =
                         it.name.asString(activity ?: return@mapNotNull null)
@@ -203,7 +203,7 @@ class StreamPlayAnime : MainAPI() {
             this.tags = data.genres
             this.recommendations =
                 data.recommendations?.edges?.map {
-                    val recommendation = it.node.mediaRecommendation
+                    val recommendation = it.node?.mediaRecommendation ?: return@mapNotNull null
                     val title =
                         recommendation.title?.english
                             ?: recommendation.title?.romaji

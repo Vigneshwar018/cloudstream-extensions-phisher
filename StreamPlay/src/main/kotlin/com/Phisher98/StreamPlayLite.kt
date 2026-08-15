@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION_ERROR")
 package com.phisher98
 
 import com.phisher98.StreamPlayExtractor.invoke2embed
