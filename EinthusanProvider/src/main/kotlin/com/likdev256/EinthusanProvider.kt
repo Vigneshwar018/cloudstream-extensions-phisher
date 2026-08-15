@@ -12,6 +12,7 @@ import org.jsoup.nodes.Element
 import com.lagradost.nicehttp.NiceResponse
 import okhttp3.FormBody
 
+@Suppress("DEPRECATION_ERROR")
 class EinthusanProvider : MainAPI() { // all providers must be an instance of MainAPI
     override var mainUrl = "https://einthusan.tv"
     override var name = "Einthusan"
@@ -39,18 +40,15 @@ class EinthusanProvider : MainAPI() { // all providers must be an instance of Ma
         page: Int,
         request: MainPageRequest
     ): HomePageResponse {
-        val document = if (page == 1) {
-            app.get(request.data).document
-        } else {
-            app.get(request.data + "&page=$page").document
-        }
+        val document = app.get(request.data + "&page=$page").document
 
-        //Log.d("Document", document.toString())
         val home = document.select("#UIMovieSummary > ul > li").mapNotNull {
             it.toSearchResult()
         }
 
-        return newHomePageResponse(arrayListOf(HomePageList(request.name, home)), hasNext = true)
+        val hasNext = document.select("div.pagination a[data-disabled=''] i").isNotEmpty()
+
+        return newHomePageResponse(arrayListOf(HomePageList(request.name, home)), hasNext = hasNext)
     }
 
     private fun Element.toSearchResult(): SearchResponse? {
@@ -126,7 +124,7 @@ class EinthusanProvider : MainAPI() { // all providers must be an instance of Ma
         val mp4link = doc.select("#UIVideoPlayer").attr("data-mp4-link")
         val m3u8link = doc.select("#UIVideoPlayer").attr("data-hls-link")
 
-        return newMovieLoadResponse(title, href, TvType.Movie, "$mp4link,$m3u8link") {
+        return newMovieLoadResponse(title, url, TvType.Movie, "$mp4link,$m3u8link") {
                 this.posterUrl = poster?.trim()
                 this.year = year
                 this.plot = description
