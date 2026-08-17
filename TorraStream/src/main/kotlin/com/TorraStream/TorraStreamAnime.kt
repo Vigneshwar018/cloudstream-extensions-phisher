@@ -124,7 +124,7 @@ class TorraStreamAnime : MainAPI() {
                         it.name.asString(activity ?: return@mapNotNull null)
                     HomePageList("${request.name}: $libraryName", it.items)
                 }
-            return newHomePageResponse(homePageList, false)
+            return newHomePageResponse(homePageList ?: emptyList(), false)
         } else {
             // Other new sections will be generated if toSearchResponseList() is
             // overridden
@@ -185,7 +185,7 @@ class TorraStreamAnime : MainAPI() {
             this.posterUrl = animeData.images?.firstOrNull { it.coverType == "Fanart" }?.url ?: data.getCoverImage()
             this.tags = data.genres
             this.recommendations =
-                data.recommendations?.edges?.map {
+                data.recommendations?.edges?.mapNotNull {
                     val recommendation = it.node?.mediaRecommendation ?: return@mapNotNull null
                     val title =
                         recommendation.title?.english
